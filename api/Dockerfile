@@ -13,8 +13,9 @@ RUN ./mvnw -B -q clean package -DskipTests
 FROM mcr.microsoft.com/openjdk/jdk:21-ubuntu
 WORKDIR /app
 
-# Runs unprivileged: nothing in this container needs root.
-RUN useradd --system --create-home --uid 10001 app
+# Runs unprivileged: nothing in this container needs root. The base image
+# already ships an `app` user, so only create one when it is missing.
+RUN id -u app >/dev/null 2>&1 || useradd --system --create-home --uid 10001 app
 USER app
 
 COPY --from=build --chown=app:app /src/target/*.jar /app/app.jar
