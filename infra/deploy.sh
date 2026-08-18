@@ -43,6 +43,9 @@ DB_NAME="${DB_NAME:-pricelog}"
 DB_USER="${DB_USER:-pricelog_app}"
 DB_SECRET="${DB_SECRET:-pricelog-db-password}"
 
+# GitHub Actions builds the API image and pushes it here on every push to main.
+GHCR_OWNER="${GHCR_OWNER:-huss2342}"
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "==> Database credentials"
@@ -86,16 +89,38 @@ fi
 echo "==> Container Apps environment"
 az containerapp env create -n "$ENVIRONMENT" -g "$RG" -l "$LOCATION" -o none 2>/dev/null || true
 
-echo "==> Building and deploying the API (remote build, no local Docker needed)"
-az containerapp up \
-  --name "$APP" \
-  --resource-group "$RG" \
-  --environment "$ENVIRONMENT" \
-  --location "$LOCATION" \
-  --source "$ROOT/api" \
-  --ingress external \
-  --target-port 8080 \
-  -o none
+# The image is built by GitHub Actions and pulled from GHCR, which is free.
+# An Azure Container Registry would cost about $5 a month, several times the
+# rest of this app combined.
+echo "==> Container image"
+IMAGE="ghcr.io/$GHCR_OWNER/price-log-api:latest"
+GHCR_TOKEN="${GHCR_TOKEN:-$(gh auth token 2>/dev/null || true)}"
+if [[ -z "$GHCR_TOKEN" ]]; then
+  echo "ERROR: no GHCR token. Run 'gh auth login', or export GHCR_TOKEN with a" >&2
+  echo "       personal access token that has read:packages." >&2
+  exit 1
+fi
+echo "    $IMAGE"
+
+if az containerapp show -n "$APP" -g "$RG" -o none 2>/dev/null; then
+  echo "==> Updating the existing container app"
+  az containerapp registry set -n "$APP" -g "$RG" \
+    --server ghcr.io --username "$GHCR_OWNER" --password "$GHCR_TOKEN" -o none
+else
+  echo "==> Creating the container app"
+  az containerapp create \
+    --name "$APP" \
+    --resource-group "$RG" \
+    --environment "$ENVIRONMENT" \
+    --image "$IMAGE" \
+    --registry-server ghcr.io \
+    --registry-username "$GHCR_OWNER" \
+    --registry-password "$GHCR_TOKEN" \
+    --ingress external \
+    --target-port 8080 \
+    --transport auto \
+    -o none
+fi
 
 API_FQDN=$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
 API_URL="https://$API_FQDN"
@@ -110,6 +135,7 @@ az containerapp secret set -n "$APP" -g "$RG" --secrets \
 # The front end origin is not known until the Static Web App exists, so CORS is
 # set after it is created, below.
 az containerapp update -n "$APP" -g "$RG" \
+  --image "$IMAGE" \
   --min-replicas 0 --max-replicas 1 \
   --cpu 0.5 --memory 1.0Gi \
   --set-env-vars \
