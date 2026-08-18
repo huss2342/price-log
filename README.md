@@ -68,8 +68,14 @@ cd api && ./mvnw test
 
 ## Deploying
 
-One command. Nothing to export — credentials are read from the existing key
-vault. The script is idempotent, so re-run it to ship an update.
+Two stages, split so that no Azure credentials ever live on GitHub and no
+container registry has to be paid for:
+
+1. **GitHub Actions builds the API image** on every push to `main` and pushes
+   it to `ghcr.io/huss2342/price-log-api`. GHCR is free; an Azure Container
+   Registry would cost about $5 a month, several times the rest of this app.
+2. **`infra/deploy.sh` deploys**, run locally against the `az` CLI. It reads
+   every credential from the existing key vault, so nothing needs exporting.
 
 ```bash
 ./infra/deploy.sh
@@ -77,6 +83,10 @@ vault. The script is idempotent, so re-run it to ship an update.
 
 It prints the app URL, the API URL, and a generated API key. Enter the last two
 in the app's Settings screen, then use the browser's *Add to Home Screen*.
+
+The script pulls a GHCR token from `gh auth token` by default. For a
+longer-lived credential, export `GHCR_TOKEN` with a fine-grained personal
+access token that only has `read:packages`.
 
 ### What it costs
 
