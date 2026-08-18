@@ -1,0 +1,113 @@
+.obs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+header {
+  align-items: flex-start;
+}
+
+.title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title strong {
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.price {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.amount {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.was {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+.wrap {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.meta {
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.unit {
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.no-margin {
+  margin: 0;
+}
+
+.insights {
+  margin: 0;
+  padding-left: 1.05rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.advice {
+  margin: 0;
+  background: var(--info-bg);
+  color: var(--info);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.87rem;
+  font-weight: 600;
+}
+
+.actions {
+  flex-wrap: wrap;
+}
+
+.actions .btn {
+  flex: 1 1 auto;
+  min-height: 42px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.9rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.actions .btn-danger {
+  flex: 0 0 auto;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.photo img {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-top: 0.5rem;
+}
+
+summary {
+  cursor: pointer;
+}

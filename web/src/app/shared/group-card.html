@@ -1,0 +1,65 @@
+@let g = group();
+
+<article class="card group">
+  <header>
+    <a class="heading" [routerLink]="['/group', g.comparisonKey]">{{ g.label }}</a>
+    <div class="row wrap">
+      <span class="badge badge-neutral">{{ g.category.replaceAll('_', ' ').toLowerCase() }}</span>
+      @for (attribute of g.attributes; track attribute) {
+        <span class="badge badge-good">{{ attribute.replaceAll('_', ' ').toLowerCase() }}</span>
+      }
+    </div>
+  </header>
+
+  @if (!comparable()) {
+    <p class="tiny dim no-margin">
+      No size on these tags, so only the sticker prices are being compared.
+    </p>
+  }
+
+  <ol class="offers">
+    @for (offer of visibleOffers(); track offer.observationId) {
+      <li [class.best]="$first" [class.stale]="offer.stale">
+        <div class="left">
+          <div class="row wrap tight">
+            <strong>{{ chainLabels[offer.chain] }}</strong>
+            @if ($first) {
+              <span class="badge badge-good">cheapest</span>
+            }
+            @if (offer.discontinued) {
+              <span class="badge badge-urgent">going away</span>
+            }
+            @if (offer.onSale) {
+              <app-signal-badge [signal]="offer.saleSignal" />
+            }
+          </div>
+          <span class="tiny dim">
+            {{ offer.storeLabel }} · {{ offer.daysAgo | ago }}
+            @if (offer.stale) {
+              · may be out of date
+            }
+          </span>
+          @if (offer.brand) {
+            <span class="tiny dim">{{ offer.brand }}</span>
+          }
+        </div>
+
+        <div class="right">
+          @if (offer.unitPriceCents !== null && offer.baseUnit !== 'NONE') {
+            <strong class="unit">{{ offer.unitPriceCents | unitPrice: offer.baseUnit }}</strong>
+          }
+          <span class="tiny dim">{{ offer.priceCents | money }}</span>
+          @if (!$first && offer.percentAboveBest) {
+            <span class="tiny worse">+{{ offer.percentAboveBest }}%</span>
+          }
+        </div>
+      </li>
+    }
+  </ol>
+
+  @if (hiddenCount() > 0) {
+    <a class="tiny" [routerLink]="['/group', g.comparisonKey]">
+      Show {{ hiddenCount() }} more {{ hiddenCount() === 1 ? 'store' : 'stores' }}
+    </a>
+  }
+</article>

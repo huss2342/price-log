@@ -1,0 +1,23 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/icons/*", "/*.{css,js,json,webmanifest,png,ico,txt}"]
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer"
+  },
+  "mimeTypes": {
+    ".webmanifest": "application/manifest+json"
+  },
+  "routes": [
+    {
+      "route": "/ngsw-worker.js",
+      "headers": { "Cache-Control": "no-cache" }
+    },
+    {
+      "route": "/ngsw.json",
+      "headers": { "Cache-Control": "no-cache" }
+    }
+  ]
+}

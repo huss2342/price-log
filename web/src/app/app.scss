@@ -1,0 +1,35 @@
+.tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  /* Keeps the bar clear of the iOS home indicator. */
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 10;
+}
+
+.tabs a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  height: var(--nav-height);
+  text-decoration: none;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.tabs a.active {
+  color: var(--accent);
+}
+
+.glyph {
+  font-size: 1.25rem;
+  line-height: 1;
+}

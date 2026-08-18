@@ -1,0 +1,96 @@
+<main class="page">
+  <h1>Snap a tag</h1>
+
+  @if (loadError(); as message) {
+    <div class="error">
+      {{ message }}
+      <a routerLink="/settings">Open settings</a>
+    </div>
+  }
+
+  <section class="card">
+    <label id="store-label">Where are you shopping?</label>
+    <div class="chips" role="group" aria-labelledby="store-label">
+      @for (store of stores(); track store.id) {
+        <button
+          class="chip"
+          [class.selected]="storeId() === store.id"
+          [attr.aria-pressed]="storeId() === store.id"
+          (click)="pickStore(store.id)"
+        >
+          {{ store.label }}
+        </button>
+      }
+      <button
+        class="chip"
+        [class.selected]="storeId() === null"
+        [attr.aria-pressed]="storeId() === null"
+        (click)="pickStore(null)"
+      >
+        Let the tag decide
+      </button>
+    </div>
+    @if (!stores().length && !loadError()) {
+      <p class="tiny dim">
+        No stores saved yet. Captures still work — the tag design tells us the chain.
+        <a routerLink="/settings">Add your warehouses</a> to compare specific locations.
+      </p>
+    }
+  </section>
+
+  <label class="shutter">
+    <input
+      type="file"
+      accept="image/*"
+      capture="environment"
+      multiple
+      (change)="onFiles($event)"
+      hidden
+    />
+    <span class="lens" aria-hidden="true">◉</span>
+    <span class="shutter-text">Photograph a price tag</span>
+    <span class="tiny">Take several — they upload in the background</span>
+  </label>
+
+  @if (outbox.pendingCount() > 0) {
+    <div class="card queued">
+      <div class="row-between">
+        <span>
+          <strong>{{ outbox.pendingCount() }}</strong> waiting to upload
+          @if (!outbox.online()) {
+            <span class="badge badge-warn">offline</span>
+          }
+        </span>
+        <button class="btn" [disabled]="outbox.uploading()" (click)="retryQueue()">
+          {{ outbox.uploading() ? 'Uploading…' : 'Retry now' }}
+        </button>
+      </div>
+      <p class="tiny dim no-margin">
+        Photos are saved on this device and sent when you have signal again.
+      </p>
+    </div>
+  } @else if (outbox.uploading()) {
+    <div class="card">Reading the tag…</div>
+  }
+
+  @if (failures().length) {
+    <div class="error stack">
+      @for (failure of failures(); track $index) {
+        <span>{{ failure }}</span>
+      }
+      <button class="btn" (click)="dismissFailures()">Dismiss</button>
+    </div>
+  }
+
+  @if (results().length) {
+    <h2>Logged this session</h2>
+    @for (result of results(); track result.id) {
+      <app-observation-card
+        [observation]="result"
+        [stores]="stores()"
+        (changed)="onChanged($event)"
+        (removed)="onRemoved($event)"
+      />
+    }
+  }
+</main>

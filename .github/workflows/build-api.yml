@@ -1,0 +1,41 @@
+name: Build API image
+
+# Container Apps pulls the API image from GHCR, which is free, so no Azure
+# Container Registry is needed. Deployment itself stays in infra/deploy.sh,
+# run locally with the az CLI — that avoids storing Azure credentials here.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - '.github/workflows/build-api.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/price-log-api:latest
+            ghcr.io/${{ github.repository_owner }}/price-log-api:${{ github.sha }}
+          # Maven downloads are the slow part; caching them keeps rebuilds short.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

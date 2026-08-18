@@ -1,0 +1,133 @@
+<main class="page">
+  <h1>Settings</h1>
+
+  @if (status(); as message) {
+    <div class="card ok">{{ message }}</div>
+  }
+  @if (error(); as message) {
+    <div class="error">{{ message }}</div>
+  }
+
+  <section class="card stack">
+    <h2>Connection</h2>
+    <div>
+      <label for="api-base">API address</label>
+      <input
+        id="api-base"
+        inputmode="url"
+        autocapitalize="off"
+        autocorrect="off"
+        placeholder="https://price-log-api.…azurecontainerapps.io"
+        [ngModel]="settings.apiBase()"
+        (ngModelChange)="settings.apiBase.set($event)"
+      />
+    </div>
+    <div>
+      <label for="api-key">API key</label>
+      <input
+        id="api-key"
+        type="password"
+        autocomplete="off"
+        [ngModel]="settings.apiKey()"
+        (ngModelChange)="settings.apiKey.set($event)"
+      />
+      <p class="tiny dim">Stored on this device only. It is sent with every request.</p>
+    </div>
+    <button class="btn" (click)="reload()">Test connection</button>
+  </section>
+
+  <section class="card stack">
+    <h2>Your stores</h2>
+    @if (stores().length) {
+      <ul class="plain">
+        @for (store of stores(); track store.id) {
+          <li class="row-between">
+            <span>
+              <strong>{{ store.label }}</strong>
+              <span class="tiny dim block">
+                {{ chainLabels[store.chain] }}
+                @if (store.city) {
+                  · {{ store.city }}{{ store.state ? ', ' + store.state : '' }}
+                }
+              </span>
+            </span>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="tiny dim">No stores yet. Add the warehouses you actually shop.</p>
+    }
+
+    <div class="grid-2">
+      <div>
+        <label for="new-chain">Chain</label>
+        <select
+          id="new-chain"
+          [ngModel]="newChain()"
+          (ngModelChange)="newChain.set($event)"
+        >
+          @for (chain of chains; track chain) {
+            <option [value]="chain">{{ chainLabels[chain] }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label for="new-label">Name</label>
+        <input
+          id="new-label"
+          placeholder="Costco Tustin"
+          [ngModel]="newLabel()"
+          (ngModelChange)="newLabel.set($event)"
+        />
+      </div>
+      <div>
+        <label for="new-city">City</label>
+        <input id="new-city" [ngModel]="newCity()" (ngModelChange)="newCity.set($event)" />
+      </div>
+      <div>
+        <label for="new-state">State</label>
+        <input
+          id="new-state"
+          maxlength="2"
+          [ngModel]="newState()"
+          (ngModelChange)="newState.set($event)"
+        />
+      </div>
+    </div>
+    <button class="btn btn-primary" [disabled]="!newLabel().trim()" (click)="addStore()">
+      Add store
+    </button>
+  </section>
+
+  <section class="card stack">
+    <h2>Tag conventions</h2>
+    <p class="tiny dim">
+      How each chain's price endings and markers are read. These are learned conventions,
+      not published rules — turn one off if it stops matching what you see at the register.
+    </p>
+
+    @for (chain of chains; track chain) {
+      @if (rulesFor(chain).length) {
+        <details>
+          <summary>{{ chainLabels[chain] }} ({{ rulesFor(chain).length }})</summary>
+          <ul class="plain rules">
+            @for (rule of rulesFor(chain); track rule.id) {
+              <li [class.off]="!rule.enabled">
+                <div class="row-between">
+                  <code>{{ priceLabel(rule) }}</code>
+                  <button class="btn tiny-btn" (click)="toggleRule(rule)">
+                    {{ rule.enabled ? 'On' : 'Off' }}
+                  </button>
+                </div>
+                <p class="tiny no-margin">{{ rule.meaning }}</p>
+                @if (rule.advice) {
+                  <p class="tiny dim no-margin">{{ rule.advice }}</p>
+                }
+              </li>
+            }
+          </ul>
+        </details>
+      }
+    }
+  </section>
+</main>

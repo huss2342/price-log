@@ -1,0 +1,7 @@
+api/target/
+api/data/
+web/node_modules/
+web/dist/
+web/.angular/
+.env
+*.log

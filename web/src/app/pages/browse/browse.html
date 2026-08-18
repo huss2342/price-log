@@ -1,0 +1,49 @@
+<main class="page">
+  <h1>Browse prices</h1>
+
+  <div class="search">
+    <input
+      type="search"
+      placeholder="eggs, ribeye, olive oil…"
+      aria-label="Search logged items"
+      [ngModel]="query()"
+      (ngModelChange)="onQuery($event)"
+    />
+    @if (query() || activeCategory()) {
+      <button class="btn" (click)="clear()">Clear</button>
+    }
+  </div>
+
+  <div class="chips">
+    @for (category of categories; track category) {
+      <button
+        class="chip"
+        [class.selected]="activeCategory() === category"
+        [attr.aria-pressed]="activeCategory() === category"
+        (click)="pickCategory(category)"
+      >
+        {{ label(category) }}
+      </button>
+    }
+  </div>
+
+  @if (error(); as message) {
+    <div class="error">{{ message }}</div>
+  }
+
+  @if (loading()) {
+    <div class="card dim">Looking…</div>
+  } @else if (groups().length) {
+    @for (group of groups(); track group.comparisonKey) {
+      <app-group-card [group]="group" [compact]="true" />
+    }
+  } @else if (searched()) {
+    <div class="card dim">
+      Nothing logged for that yet. Snap a tag next time you see one.
+    </div>
+  } @else {
+    <div class="card dim">
+      Search an item, or pick a category, to see where it was cheapest.
+    </div>
+  }
+</main>

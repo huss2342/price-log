@@ -1,0 +1,41 @@
+<main class="page">
+  <h1>Review</h1>
+
+  @if (error(); as message) {
+    <div class="error">{{ message }}</div>
+  }
+
+  @if (loading()) {
+    <div class="card dim">Loading…</div>
+  } @else {
+    @if (pending().length) {
+      <h2>Needs a look ({{ pending().length }})</h2>
+      <p class="tiny dim">
+        These were read with low confidence, or had no size to compare on. Fix or confirm
+        each one and it drops off this list.
+      </p>
+      @for (observation of pending(); track observation.id) {
+        <app-observation-card
+          [observation]="observation"
+          [stores]="stores()"
+          (changed)="onChanged($event)"
+          (removed)="onRemoved($event)"
+        />
+      }
+    } @else {
+      <div class="card dim">Nothing to review. Every logged price is confirmed.</div>
+    }
+
+    @if (recent().length) {
+      <h2>Recently logged</h2>
+      @for (observation of recent(); track observation.id) {
+        <app-observation-card
+          [observation]="observation"
+          [stores]="stores()"
+          (changed)="onChanged($event)"
+          (removed)="onRemoved($event)"
+        />
+      }
+    }
+  }
+</main>
