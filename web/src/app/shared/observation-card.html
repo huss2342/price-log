@@ -1,0 +1,174 @@
+@let o = observation();
+
+<article class="card obs">
+  <header class="row-between">
+    <div class="title">
+      <strong>{{ o.productName }}</strong>
+      @if (o.brand) {
+        <span class="dim tiny">{{ o.brand }}</span>
+      }
+    </div>
+    <div class="price">
+      <span class="amount">{{ o.priceCents | money }}</span>
+      @if (o.regularPriceCents && o.regularPriceCents > o.priceCents) {
+        <span class="was">{{ o.regularPriceCents | money }}</span>
+      }
+    </div>
+  </header>
+
+  <div class="row wrap">
+    <span class="badge badge-neutral">{{ chainLabels[o.chain] }}</span>
+    <app-signal-badge [signal]="o.saleSignal" />
+    @if (o.discontinued) {
+      <span class="badge badge-urgent">Buy now — not restocking</span>
+    }
+    @if (o.needsReview) {
+      <span class="badge badge-warn">Needs a look</span>
+    }
+    @for (attribute of o.attributes; track attribute) {
+      <span class="badge badge-good">{{ attribute.replaceAll('_', ' ').toLowerCase() }}</span>
+    }
+  </div>
+
+  <div class="row-between tiny dim meta">
+    <span>
+      {{ o.storeLabel }} · {{ o.observedOn }}
+      @if (o.itemNumber) {
+        · item {{ o.itemNumber }}
+      }
+    </span>
+    @if (o.unitPriceCents !== null && o.baseUnit !== 'NONE') {
+      <strong class="unit">{{ o.unitPriceCents | unitPrice: o.baseUnit }}</strong>
+    } @else {
+      <span class="badge badge-warn">no size — add one to compare</span>
+    }
+  </div>
+
+  @if (o.saleEndsOn) {
+    <p class="tiny dim no-margin">Promotion ends {{ o.saleEndsOn }}</p>
+  }
+
+  @if (o.tagInsights.length) {
+    <ul class="insights">
+      @for (insight of o.tagInsights; track insight) {
+        <li>{{ insight }}</li>
+      }
+    </ul>
+  }
+
+  @if (o.advice) {
+    <p class="advice">{{ o.advice }}</p>
+  }
+
+  @if (error(); as message) {
+    <p class="error">{{ message }}</p>
+  }
+
+  @if (editing()) {
+    <div class="stack edit">
+      <div>
+        <label for="name-{{ o.id }}">Item</label>
+        <input
+          id="name-{{ o.id }}"
+          [ngModel]="draft().productName"
+          (ngModelChange)="patch('productName', $event)"
+        />
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label for="price-{{ o.id }}">Price ($)</label>
+          <input
+            id="price-{{ o.id }}"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            [ngModel]="priceDollars()"
+            (ngModelChange)="priceDollars.set($event)"
+          />
+        </div>
+        <div>
+          <label for="brand-{{ o.id }}">Brand</label>
+          <input
+            id="brand-{{ o.id }}"
+            [ngModel]="draft().brand"
+            (ngModelChange)="patch('brand', $event)"
+          />
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div>
+          <label for="size-{{ o.id }}">Size</label>
+          <input
+            id="size-{{ o.id }}"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            [ngModel]="draft().sizeValue"
+            (ngModelChange)="patch('sizeValue', $event)"
+          />
+        </div>
+        <div>
+          <label for="unit-{{ o.id }}">Unit</label>
+          <input
+            id="unit-{{ o.id }}"
+            placeholder="oz, lb, ct"
+            [ngModel]="draft().sizeUnit"
+            (ngModelChange)="patch('sizeUnit', $event)"
+          />
+        </div>
+        <div>
+          <label for="pack-{{ o.id }}">Pack</label>
+          <input
+            id="pack-{{ o.id }}"
+            type="number"
+            inputmode="numeric"
+            [ngModel]="draft().packCount"
+            (ngModelChange)="patch('packCount', $event)"
+          />
+        </div>
+      </div>
+
+      @if (stores().length) {
+        <div>
+          <label for="store-{{ o.id }}">Store</label>
+          <select
+            id="store-{{ o.id }}"
+            [ngModel]="draft().storeId"
+            (ngModelChange)="patch('storeId', +$event)"
+          >
+            @for (store of stores(); track store.id) {
+              <option [value]="store.id">{{ store.label }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      <div class="row">
+        <button class="btn btn-primary" [disabled]="saving()" (click)="save(true)">
+          Save &amp; confirm
+        </button>
+        <button class="btn" [disabled]="saving()" (click)="cancel()">Cancel</button>
+      </div>
+    </div>
+  } @else {
+    <div class="row actions">
+      <button class="btn" (click)="startEdit()">Fix details</button>
+      @if (o.needsReview) {
+        <button class="btn btn-primary" [disabled]="saving()" (click)="confirmAsIs()">
+          Looks right
+        </button>
+      }
+      <a class="btn" [routerLink]="['/browse']" [queryParams]="{ q: o.productName }">Compare</a>
+      <button class="btn btn-danger" (click)="remove()" aria-label="Delete this price">✕</button>
+    </div>
+  }
+
+  @if (o.photoUrl) {
+    <details class="photo">
+      <summary class="tiny dim">Show the tag</summary>
+      <img [src]="photoSrc(o.photoUrl)" alt="Photo of the price tag" loading="lazy" />
+    </details>
+  }
+</article>

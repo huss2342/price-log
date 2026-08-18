@@ -1,0 +1,14 @@
+# Tests get their own in-memory database so a running dev server does not hold
+# the file lock, and so each run starts from the migrations alone.
+spring:
+  datasource:
+    url: jdbc:h2:mem:pricelog-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+
+pricelog:
+  auth:
+    api-key: ""
+  photos:
+    mode: local
+    local-dir: ./target/test-photos

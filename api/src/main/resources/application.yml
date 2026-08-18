@@ -1,0 +1,87 @@
+spring:
+  application:
+    name: price-log-api
+
+  # Development default: file-backed H2, so the app runs with no external
+  # dependencies. The prod profile swaps in PostgreSQL.
+  datasource:
+    url: jdbc:h2:file:./data/pricelog;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+
+  servlet:
+    multipart:
+      # Phone photos are large; anything past this is rejected with a clear error.
+      max-file-size: 15MB
+      max-request-size: 16MB
+
+server:
+  port: 8080
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    app.pricelog: INFO
+
+pricelog:
+  auth:
+    # Empty disables the check entirely, which is the local development default.
+    api-key: ${APP_API_KEY:}
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}
+
+  photos:
+    mode: ${PHOTO_MODE:local}
+    local-dir: ${PHOTO_DIR:./data/photos}
+    connection-string: ${STORAGE_CONNECTION_STRING:}
+    container: ${STORAGE_CONTAINER:tag-photos}
+
+  azure-openai:
+    endpoint: ${AZURE_OPENAI_ENDPOINT:}
+    api-key: ${AZURE_OPENAI_API_KEY:}
+    deployment: ${AZURE_OPENAI_DEPLOYMENT:tag-extractor}
+    api-version: 2025-01-01-preview
+    reasoning-effort: low
+    max-completion-tokens: 4000
+    timeout-seconds: 90
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    # The `pricelog` database on the existing prm-db-server-dest flexible
+    # server. It has its own login, which has no privileges on prm_db.
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      # That server is a Burstable B1ms shared with the prm production app, so
+      # this pool stays deliberately small and releases connections quickly
+      # rather than holding them open against a limited connection budget.
+      maximum-pool-size: 3
+      minimum-idle: 0
+      idle-timeout: 30000
+
+pricelog:
+  photos:
+    mode: ${PHOTO_MODE:blob}

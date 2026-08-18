@@ -1,0 +1,45 @@
+.back {
+  margin-bottom: 0.8rem;
+}
+
+.history {
+  padding: 0.6rem 0.8rem;
+}
+
+.toggle {
+  width: 100%;
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0.3rem 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.block {
+  display: block;
+}
+
+.tight {
+  gap: 0.4rem;
+}
+
+.entries {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.entries li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.6rem;
+}

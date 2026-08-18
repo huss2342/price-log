@@ -1,0 +1,55 @@
+<main class="page">
+  <button class="btn back" (click)="back()">← Back</button>
+
+  @if (loading()) {
+    <div class="card dim">Loading…</div>
+  } @else if (error(); as message) {
+    <div class="error">{{ message }}</div>
+  } @else if (group(); as g) {
+    <h1>{{ g.label }}</h1>
+    <app-group-card [group]="g" />
+
+    <h2>Price history</h2>
+    <p class="tiny dim">
+      Pick a product to see every price logged for it, so you can tell a real sale from
+      the usual price.
+    </p>
+
+    @for (offer of g.offers; track offer.observationId) {
+      <div class="card history">
+        <button class="row-between toggle" (click)="toggleHistory(offer.productId)">
+          <span>
+            <strong>{{ offer.productName }}</strong>
+            <span class="tiny dim block">{{ chainLabels[offer.chain] }} · {{ offer.storeLabel }}</span>
+          </span>
+          <span aria-hidden="true">{{ openProductId() === offer.productId ? '▾' : '▸' }}</span>
+        </button>
+
+        @if (openProductId() === offer.productId) {
+          @if (history().length) {
+            <ol class="entries">
+              @for (entry of history(); track entry.observationId) {
+                <li>
+                  <span class="tiny dim">{{ entry.observedOn }} · {{ entry.daysAgo | ago }}</span>
+                  <span class="row tight">
+                    <strong>{{ entry.priceCents | money }}</strong>
+                    @if (entry.unitPriceCents !== null && entry.baseUnit !== 'NONE') {
+                      <span class="tiny dim">
+                        {{ entry.unitPriceCents | unitPrice: entry.baseUnit }}
+                      </span>
+                    }
+                    @if (entry.onSale) {
+                      <app-signal-badge [signal]="entry.saleSignal" />
+                    }
+                  </span>
+                </li>
+              }
+            </ol>
+          } @else {
+            <p class="tiny dim">Only this one sighting so far.</p>
+          }
+        }
+      </div>
+    }
+  }
+</main>

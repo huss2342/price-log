@@ -1,0 +1,115 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "itemName", "brand", "commodity", "category", "sizeValue", "sizeUnit", "packCount",
+    "price", "regularPrice", "savingsAmount", "onSale", "saleEndsOn",
+    "printedUnitPrice", "printedUnitPriceUnit", "itemNumber", "storeChain",
+    "markers", "attributes", "rawText", "confidence", "readable"
+  ],
+  "properties": {
+    "itemName": {
+      "type": ["string", "null"],
+      "description": "Product name as printed, expanded from retailer abbreviations where obvious (KS -> Kirkland Signature, ORG -> Organic, CHKN -> Chicken)."
+    },
+    "brand": {
+      "type": ["string", "null"],
+      "description": "Brand only, separate from the product name. Null when the tag shows no brand."
+    },
+    "commodity": {
+      "type": "string",
+      "description": "Generic name for what this item IS, with no brand, no size, and no quality claims. Two products that a shopper would consider substitutes must produce the same string. Lowercase, singular where natural. Examples: 'large eggs', 'ground beef 80/20', 'ribeye steak', 'whole milk', 'olive oil', 'paper towels', 'boneless skinless chicken breast'. Be specific enough that the comparison is fair: ribeye is not ground beef."
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "EGGS", "DAIRY", "MEAT", "SEAFOOD", "PRODUCE", "BAKERY", "PANTRY",
+        "FROZEN", "BEVERAGES", "SNACKS", "HOUSEHOLD", "PAPER_GOODS",
+        "PERSONAL_CARE", "SUPPLEMENTS", "PET", "ELECTRONICS", "APPAREL",
+        "HOME", "OTHER"
+      ]
+    },
+    "sizeValue": {
+      "type": ["number", "null"],
+      "description": "Numeric size of ONE unit in the pack. For '2 x 32 oz' this is 32, not 64. For '24 ct eggs' this is 24 and packCount is 1."
+    },
+    "sizeUnit": {
+      "type": ["string", "null"],
+      "description": "Unit as printed: oz, fl oz, lb, g, kg, ml, l, ct, count, pack, sheets, rolls."
+    },
+    "packCount": {
+      "type": ["integer", "null"],
+      "description": "Number of identical units in the pack. For '2 x 32 oz' this is 2. Null or 1 for a single unit."
+    },
+    "price": {
+      "type": ["number", "null"],
+      "description": "Price you pay at the register today, in dollars. If the tag shows a discount, this is the DISCOUNTED price."
+    },
+    "regularPrice": {
+      "type": ["number", "null"],
+      "description": "Pre-discount price in dollars when the tag shows one, e.g. the struck-through price or price + savings. Null if not shown."
+    },
+    "savingsAmount": {
+      "type": ["number", "null"],
+      "description": "Discount amount in dollars when the tag states one, e.g. '$3.00 OFF'."
+    },
+    "onSale": {
+      "type": "boolean",
+      "description": "True when the tag shows any discount, promotion, markdown, or savings block."
+    },
+    "saleEndsOn": {
+      "type": ["string", "null"],
+      "description": "Last day of the promotion as YYYY-MM-DD when the tag prints a date range. Null otherwise."
+    },
+    "printedUnitPrice": {
+      "type": ["number", "null"],
+      "description": "Unit price printed on the tag itself, in dollars, if present. Do not compute it."
+    },
+    "printedUnitPriceUnit": {
+      "type": ["string", "null"],
+      "description": "Unit that printedUnitPrice is per, e.g. 'oz', 'lb', 'ct'."
+    },
+    "itemNumber": {
+      "type": ["string", "null"],
+      "description": "Retailer item/article number printed on the tag."
+    },
+    "storeChain": {
+      "type": "string",
+      "enum": ["COSTCO", "SAMS_CLUB", "ALDI", "WALMART", "OTHER"],
+      "description": "Infer from tag layout, logo, fonts, or colors. Costco tags are white with a large black price and an item number; Sam's Club tags carry the Sam's logo; Walmart uses blue or yellow rollback tags; Aldi uses red and blue."
+    },
+    "markers": {
+      "type": "array",
+      "description": "Visual markers present on the tag. ASTERISK means a printed asterisk in a corner (Costco discontinuation mark). C_MARKER means a standalone letter C on a Sam's Club sign.",
+      "items": {
+        "type": "string",
+        "enum": ["ASTERISK", "C_MARKER", "YELLOW_TAG", "RED_TAG", "DEATH_STAR"]
+      }
+    },
+    "attributes": {
+      "type": "array",
+      "description": "Quality claims printed on the tag. Only include claims actually shown, never inferred from the product type.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ORGANIC", "PASTURE_RAISED", "FREE_RANGE", "CAGE_FREE", "GRASS_FED",
+          "GRASS_FINISHED", "WILD_CAUGHT", "FARM_RAISED", "NON_GMO",
+          "ANTIBIOTIC_FREE", "HORMONE_FREE", "A2_MILK", "RAW", "KOSHER",
+          "HALAL", "GLUTEN_FREE", "PRIME_GRADE", "CHOICE_GRADE"
+        ]
+      }
+    },
+    "rawText": {
+      "type": ["string", "null"],
+      "description": "All text visible on the tag, in reading order, so rules can match on wording the structured fields drop."
+    },
+    "confidence": {
+      "type": "number",
+      "description": "0 to 1. How confident you are in price and item name specifically. Below 0.7 flags the capture for manual review."
+    },
+    "readable": {
+      "type": "boolean",
+      "description": "False when the image is not a price tag at all, or is too blurred or cropped to read a price."
+    }
+  }
+}
