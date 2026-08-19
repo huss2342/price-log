@@ -160,11 +160,35 @@ SWA_HOST=$(az staticwebapp show -n "$SWA" -g "$RG" --query defaultHostname -o ts
 echo "==> Building the PWA"
 (cd "$ROOT/web" && npm ci && npx ng build --configuration production)
 
+# The API key is written into the published site rather than into the source
+# tree, so it never reaches git. The site is behind a GitHub sign-in limited to
+# one account, and staticwebapp.config.json restricts /config.json to that same
+# role, so only the signed-in owner can read it. That is what lets the app
+# configure itself with no typing on any device.
+echo "==> Writing the protected runtime config"
+cat > "$ROOT/web/dist/web/browser/config.json" <<CONFIG
+{
+  "apiBase": "$API_URL",
+  "apiKey": "$API_KEY"
+}
+CONFIG
+
 echo "==> Uploading the PWA"
 npx --yes @azure/static-web-apps-cli@latest deploy \
   "$ROOT/web/dist/web/browser" \
   --deployment-token "$SWA_TOKEN" \
   --env production
+
+echo "==> Restricting the site to one GitHub account"
+# Idempotent: re-inviting an account that already holds the role is harmless.
+# The invitation link has to be opened once, by that account, to take effect.
+INVITE=$(az staticwebapp users invite -n "$SWA" -g "$RG" \
+  --authentication-provider GitHub \
+  --user-details "$GHCR_OWNER" \
+  --role pricelog \
+  --domain "$SWA_HOST" \
+  --invitation-expiration-in-hours 168 \
+  --query invitationUrl -o tsv 2>/dev/null || true)
 
 echo "==> Allowing the PWA origin through CORS"
 az containerapp update -n "$APP" -g "$RG" \
@@ -176,10 +200,15 @@ Deployed.
 
   App       https://$SWA_HOST
   API       $API_URL
-  API key   $API_KEY
+  API key   $API_KEY  (already baked into the site; kept here for curl)
 
-Open the app on your phone, go to Settings, and enter the API address and key
-above. Then use the browser's "Add to Home Screen" to install it.
+The site is restricted to the GitHub account $GHCR_OWNER. Open it on your
+phone, sign in with GitHub once, then "Add to Home Screen". The app reads its
+own configuration, so there is nothing to type.
+
+If access is refused, open this one-time invitation with that GitHub account:
+
+  ${INVITE:-<already a member, or re-run to generate one>}
 
 The API scales to zero when unused, so the first photo after an idle period
 takes a few extra seconds while it starts.

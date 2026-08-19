@@ -3,21 +3,55 @@
     "rewrite": "/index.html",
     "exclude": ["/icons/*", "/*.{css,js,json,webmanifest,png,ico,txt}"]
   },
+  "auth": {
+    "identityProviders": {
+      "github": {}
+    }
+  },
+  "routes": [
+    {
+      "route": "/.auth/login/github",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
+      "route": "/.auth/login/aad",
+      "statusCode": 404
+    },
+    {
+      "route": "/.auth/*",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
+      "route": "/ngsw-worker.js",
+      "allowedRoles": ["pricelog"],
+      "headers": { "Cache-Control": "no-cache" }
+    },
+    {
+      "route": "/ngsw.json",
+      "allowedRoles": ["pricelog"],
+      "headers": { "Cache-Control": "no-cache" }
+    },
+    {
+      "route": "/config.json",
+      "allowedRoles": ["pricelog"],
+      "headers": { "Cache-Control": "no-store" }
+    },
+    {
+      "route": "/*",
+      "allowedRoles": ["pricelog"]
+    }
+  ],
+  "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/github",
+      "statusCode": 302
+    }
+  },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer"
   },
   "mimeTypes": {
     ".webmanifest": "application/manifest+json"
-  },
-  "routes": [
-    {
-      "route": "/ngsw-worker.js",
-      "headers": { "Cache-Control": "no-cache" }
-    },
-    {
-      "route": "/ngsw.json",
-      "headers": { "Cache-Control": "no-cache" }
-    }
-  ]
+  }
 }
