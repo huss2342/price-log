@@ -40,6 +40,12 @@ public class ApiExceptionHandler {
         return error(HttpStatus.PAYLOAD_TOO_LARGE, "That photo is too large. Keep uploads under 15 MB.");
     }
 
+    /** The request was well formed but conflicts with the current state. */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> conflict(IllegalStateException e) {
+        return error(HttpStatus.CONFLICT, e.getMessage());
+    }
+
     @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class})
     public ResponseEntity<Map<String, String>> badRequest(Exception e) {
         return error(HttpStatus.BAD_REQUEST, e.getMessage());

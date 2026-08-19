@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface PriceObservationRepository extends JpaRepository<PriceObservation, Long> {
 
+    long countByStoreId(Long storeId);
+
     @Query("""
             select o from PriceObservation o
             join fetch o.product p

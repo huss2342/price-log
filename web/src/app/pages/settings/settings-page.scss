@@ -58,3 +58,12 @@ details {
   border-top: 1px solid var(--border);
   padding-top: 0.35rem;
 }
+
+.store {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}

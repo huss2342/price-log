@@ -2,6 +2,17 @@ import { Injectable, signal, effect } from '@angular/core';
 
 const KEY = 'pricelog.settings';
 
+/**
+ * The deployed API. Baked in so a fresh install is usable without typing a URL;
+ * still overridable in Settings, and localhost wins during development.
+ */
+const HOSTED_API = 'https://price-log-api.greencoast-8c619113.eastus.azurecontainerapps.io';
+
+function defaultApiBase(): string {
+  const host = location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' ? 'http://localhost:8080' : HOSTED_API;
+}
+
 interface Persisted {
   apiBase: string;
   apiKey: string;
@@ -10,19 +21,20 @@ interface Persisted {
 }
 
 const DEFAULTS: Persisted = {
-  apiBase: 'http://localhost:8080',
+  apiBase: '',
   apiKey: '',
   defaultStoreId: null,
 };
 
 @Injectable({ providedIn: 'root' })
 export class Settings {
-  readonly apiBase = signal(DEFAULTS.apiBase);
+  readonly apiBase = signal(defaultApiBase());
   readonly apiKey = signal(DEFAULTS.apiKey);
   readonly defaultStoreId = signal<number | null>(DEFAULTS.defaultStoreId);
 
   constructor() {
     this.load();
+    this.applyLinkConfig();
     // Every change writes straight through, so a reload never loses the config.
     effect(() => {
       const value: Persisted = {
@@ -44,11 +56,40 @@ export class Settings {
     if (!raw) return;
     try {
       const parsed = { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Persisted>) };
-      this.apiBase.set(parsed.apiBase);
+      // An older install may have stored a blank or stale localhost address.
+      if (parsed.apiBase) {
+        this.apiBase.set(parsed.apiBase);
+      }
       this.apiKey.set(parsed.apiKey);
       this.defaultStoreId.set(parsed.defaultStoreId);
     } catch {
       localStorage.removeItem(KEY);
     }
+  }
+
+  /**
+   * Lets a single link carry the configuration: ?key=...&api=...
+   *
+   * On iOS a home-screen web app gets its own storage, separate from Safari,
+   * so anything typed into Settings in the browser does not follow the app when
+   * it is installed. Opening the configuring link from inside the installed app
+   * sets it up there too, with no retyping.
+   *
+   * The parameters are stripped from the address bar immediately so the key
+   * does not linger in history or get shared with the URL.
+   */
+  private applyLinkConfig(): void {
+    const params = new URLSearchParams(location.search);
+    const api = params.get('api');
+    const key = params.get('key');
+    if (!api && !key) return;
+
+    if (api) this.apiBase.set(api);
+    if (key) this.apiKey.set(key);
+
+    params.delete('api');
+    params.delete('key');
+    const rest = params.toString();
+    history.replaceState({}, '', location.pathname + (rest ? `?${rest}` : ''));
   }
 }

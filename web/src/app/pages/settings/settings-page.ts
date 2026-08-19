@@ -22,6 +22,9 @@ export class SettingsPage implements OnInit {
   protected readonly status = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
 
+  protected readonly editingId = signal<number | null>(null);
+  protected readonly draft = signal<Partial<Store>>({});
+
   protected readonly newChain = signal<Chain>('COSTCO');
   protected readonly newLabel = signal('');
   protected readonly newCity = signal('');
@@ -66,6 +69,57 @@ export class SettingsPage implements OnInit {
         },
         error: (err) => this.error.set(this.message(err, 'Could not add that store.')),
       });
+  }
+
+  protected startEdit(store: Store): void {
+    this.editingId.set(store.id);
+    this.draft.set({ ...store });
+    this.error.set(null);
+  }
+
+  protected cancelEdit(): void {
+    this.editingId.set(null);
+  }
+
+  protected patchDraft<K extends keyof Store>(key: K, value: Store[K]): void {
+    this.draft.update((d) => ({ ...d, [key]: value }));
+  }
+
+  protected saveStore(): void {
+    const id = this.editingId();
+    const draft = this.draft();
+    if (id == null || !draft.label?.trim()) return;
+
+    this.api
+      .updateStore(id, {
+        chain: draft.chain,
+        label: draft.label.trim(),
+        city: draft.city?.trim() || null,
+        state: draft.state?.trim() || null,
+      })
+      .subscribe({
+        next: (saved) => {
+          this.stores.update((rows) => rows.map((r) => (r.id === saved.id ? saved : r)));
+          this.editingId.set(null);
+          this.flash(`Saved ${saved.label}.`);
+        },
+        error: (err) => this.error.set(this.message(err, 'Could not save that store.')),
+      });
+  }
+
+  protected deleteStore(store: Store): void {
+    if (!globalThis.confirm(`Delete ${store.label}?`)) return;
+
+    this.api.deleteStore(store.id).subscribe({
+      next: () => {
+        this.stores.update((rows) => rows.filter((r) => r.id !== store.id));
+        this.editingId.set(null);
+        this.flash(`Deleted ${store.label}.`);
+      },
+      // A store with prices logged against it is refused, not cascaded, so the
+      // server's explanation is the useful thing to show.
+      error: (err) => this.error.set(this.message(err, 'Could not delete that store.')),
+    });
   }
 
   protected toggleRule(rule: TagRule): void {
