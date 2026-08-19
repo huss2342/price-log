@@ -74,6 +74,14 @@ export class Api {
     return this.http.post<Store>(this.url('/api/stores'), store);
   }
 
+  updateStore(id: number, store: Partial<Store>): Observable<Store> {
+    return this.http.put<Store>(this.url(`/api/stores/${id}`), store);
+  }
+
+  deleteStore(id: number): Observable<void> {
+    return this.http.delete<void>(this.url(`/api/stores/${id}`));
+  }
+
   tagRules(): Observable<TagRule[]> {
     return this.http.get<TagRule[]>(this.url('/api/tag-rules'));
   }

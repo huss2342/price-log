@@ -41,16 +41,66 @@
     @if (stores().length) {
       <ul class="plain">
         @for (store of stores(); track store.id) {
-          <li class="row-between">
-            <span>
-              <strong>{{ store.label }}</strong>
-              <span class="tiny dim block">
-                {{ chainLabels[store.chain] }}
-                @if (store.city) {
-                  · {{ store.city }}{{ store.state ? ', ' + store.state : '' }}
-                }
-              </span>
-            </span>
+          <li class="store">
+            @if (editingId() === store.id) {
+              <div class="grid-2">
+                <div>
+                  <label for="edit-chain-{{ store.id }}">Chain</label>
+                  <select
+                    id="edit-chain-{{ store.id }}"
+                    [ngModel]="draft().chain"
+                    (ngModelChange)="patchDraft('chain', $event)"
+                  >
+                    @for (chain of chains; track chain) {
+                      <option [value]="chain">{{ chainLabels[chain] }}</option>
+                    }
+                  </select>
+                </div>
+                <div>
+                  <label for="edit-label-{{ store.id }}">Name</label>
+                  <input
+                    id="edit-label-{{ store.id }}"
+                    [ngModel]="draft().label"
+                    (ngModelChange)="patchDraft('label', $event)"
+                  />
+                </div>
+                <div>
+                  <label for="edit-city-{{ store.id }}">City</label>
+                  <input
+                    id="edit-city-{{ store.id }}"
+                    [ngModel]="draft().city"
+                    (ngModelChange)="patchDraft('city', $event)"
+                  />
+                </div>
+                <div>
+                  <label for="edit-state-{{ store.id }}">State</label>
+                  <input
+                    id="edit-state-{{ store.id }}"
+                    maxlength="2"
+                    [ngModel]="draft().state"
+                    (ngModelChange)="patchDraft('state', $event)"
+                  />
+                </div>
+              </div>
+              <div class="row">
+                <button class="btn btn-primary" (click)="saveStore()">Save</button>
+                <button class="btn" (click)="cancelEdit()">Cancel</button>
+                <button class="btn btn-danger" (click)="deleteStore(store)">Delete</button>
+              </div>
+            } @else {
+              <div class="row-between">
+                <span>
+                  <strong>{{ store.label }}</strong>
+                  <span class="tiny dim block">
+                    {{ chainLabels[store.chain] }}
+                    @if (store.city) {
+                      · {{ store.city }}{{ store.state ? ', ' + store.state : '' }}
+                    }
+                  </span>
+                </span>
+                <button class="btn tiny-btn" (click)="startEdit(store)">Edit</button>
+              </div>
+            }
           </li>
         }
       </ul>
