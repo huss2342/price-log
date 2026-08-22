@@ -7,9 +7,10 @@ import java.time.LocalDate;
  * retailer's item number so the match is exact rather than a name guess.
  *
  * @param lastPriceCents what was paid the last time this item was photographed
- * @param impliedPriceCents last price minus the published discount, when both
- *                          are known — an estimate, since the last price may
- *                          itself be stale
+ * @param impliedPriceCents what it should ring up at: the published sale price
+ *                          when Costco states one, otherwise the last price
+ *                          seen minus the published discount, which is only an
+ *                          estimate because that price may itself be stale
  */
 public record DealMatch(
         Long productId,
@@ -17,6 +18,7 @@ public record DealMatch(
         String brand,
         String itemNumber,
         String dealTitle,
+        Integer salePriceCents,
         Integer discountCents,
         boolean inWarehouse,
         boolean watched,

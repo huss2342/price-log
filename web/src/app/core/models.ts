@@ -70,6 +70,9 @@ export interface DealMatch {
   brand: string | null;
   itemNumber: string;
   dealTitle: string;
+  /** What Costco says it costs during the promotion. */
+  salePriceCents: number | null;
+  /** What Costco says is being taken off. Separate from the price. */
   discountCents: number | null;
   inWarehouse: boolean;
   watched: boolean;

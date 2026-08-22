@@ -47,7 +47,9 @@ public class CostcoDealsFetcher {
     private static final Pattern ITEM_NUMBER = Pattern.compile("\\d{5,9}");
     private static final Pattern DOLLARS_OFF =
             Pattern.compile("\\$\\s*([\\d,]+(?:\\.\\d{2})?)\\s*OFF", Pattern.CASE_INSENSITIVE);
-    private static final Pattern BARE_AMOUNT = Pattern.compile("^[\\d,]+(\\.\\d{2})?$");
+    /** Leading amount of a run like "$23.99" or "$9", once the lines are joined. */
+    private static final Pattern LEADING_PRICE =
+            Pattern.compile("^\\$\\s*([\\d,]+(?:\\.\\d{1,2})?)");
     private static final Pattern SIZE_ONLY =
             Pattern.compile("^[\\d.,\\s]+(ct|oz|lb|pair|pairs|pk|pack|count)?$", Pattern.CASE_INSENSITIVE);
 
@@ -106,13 +108,14 @@ public class CostcoDealsFetcher {
             List<String> after = lines.subList(i + 1, Math.min(lines.size(), i + 9));
 
             String title = title(before);
-            Integer discount = discountCents(after);
-            if (title == null || discount == null) {
+            Amounts amounts = amounts(after);
+            if (title == null || !amounts.any()) {
                 continue;
             }
 
             boolean inWarehouse = before.stream().anyMatch(l -> l.equalsIgnoreCase("warehouse"));
-            deals.add(new PublishedDeal(itemNumbers, title, discount, inWarehouse));
+            deals.add(new PublishedDeal(
+                    itemNumbers, title, amounts.priceCents(), amounts.discountCents(), inWarehouse));
         }
 
         log.info("Parsed {} Costco deals ({} valid in warehouse)",
@@ -161,20 +164,49 @@ public class CostcoDealsFetcher {
                 && !lower.startsWith("selection varies");
     }
 
-    private Integer discountCents(List<String> after) {
+    private record Amounts(Integer priceCents, Integer discountCents) {
+        boolean any() {
+            return priceCents != null || discountCents != null;
+        }
+    }
+
+    /**
+     * Reads the promotional price and the amount off, which the page prints as
+     * two separate things:
+     * <pre>
+     *   $ 23 . 99        the price during the promotion, split across lines
+     *   After $6 OFF     the amount taken off
+     * </pre>
+     * Treating the first as a discount would turn a $6 saving into a $23 one,
+     * so they are parsed independently and either may be absent.
+     */
+    private Amounts amounts(List<String> after) {
+        Integer price = null;
+        Integer discount = null;
+
         for (int i = 0; i < after.size(); i++) {
             String line = after.get(i);
 
+            // Checked first: "After $6 OFF" also contains a dollar amount.
             Matcher off = DOLLARS_OFF.matcher(line);
             if (off.find()) {
-                return toCents(off.group(1));
+                if (discount == null) {
+                    discount = toCents(off.group(1));
+                }
+                continue;
             }
-            // The page also renders the amount as a lone "$" then the number.
-            if (line.equals("$") && i + 1 < after.size() && BARE_AMOUNT.matcher(after.get(i + 1)).matches()) {
-                return toCents(after.get(i + 1));
+
+            if (price == null && line.startsWith("$")) {
+                // The digits, the decimal point and the cents each arrive as
+                // their own text node, so join a few and read the leading amount.
+                String joined = String.join("", after.subList(i, Math.min(after.size(), i + 4)));
+                Matcher leading = LEADING_PRICE.matcher(joined);
+                if (leading.find()) {
+                    price = toCents(leading.group(1));
+                }
             }
         }
-        return null;
+        return new Amounts(price, discount);
     }
 
     private Integer toCents(String amount) {

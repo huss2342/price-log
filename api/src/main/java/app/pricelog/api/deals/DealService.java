@@ -103,6 +103,7 @@ public class DealService {
 
                     row.setItemNumber(itemNumber);
                     row.setTitle(truncate(deal.title(), 512));
+                    row.setSalePriceCents(deal.salePriceCents());
                     row.setDiscountCents(deal.discountCents());
                     row.setInWarehouse(deal.inWarehouse());
                     row.setLastSeenOn(today);
@@ -176,9 +177,13 @@ public class DealService {
 
     private DealMatch toMatch(DealSighting deal, PriceObservation observation) {
         int lastPrice = observation.getPriceCents();
-        Integer implied = deal.getDiscountCents() == null
-                ? null
-                : Math.max(0, lastPrice - deal.getDiscountCents());
+
+        // Costco's own promotional price is the truth when it states one. The
+        // subtraction is only a fallback, and only as good as the last sighting.
+        Integer implied = deal.getSalePriceCents();
+        if (implied == null && deal.getDiscountCents() != null) {
+            implied = Math.max(0, lastPrice - deal.getDiscountCents());
+        }
 
         return new DealMatch(
                 observation.getProduct().getId(),
@@ -186,6 +191,7 @@ public class DealService {
                 observation.getProduct().getBrand(),
                 deal.getItemNumber(),
                 deal.getTitle(),
+                deal.getSalePriceCents(),
                 deal.getDiscountCents(),
                 deal.isInWarehouse(),
                 observation.getProduct().isWatched(),
