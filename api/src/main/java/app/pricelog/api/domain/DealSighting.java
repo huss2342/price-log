@@ -26,6 +26,11 @@ public class DealSighting {
     @Column(nullable = false, length = 512)
     private String title;
 
+    /** What the item costs during the promotion, when the page states it. */
+    @Column(name = "sale_price_cents")
+    private Integer salePriceCents;
+
+    /** How much is taken off, when the page states it. */
     @Column(name = "discount_cents")
     private Integer discountCents;
 
@@ -77,6 +82,14 @@ public class DealSighting {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public Integer getSalePriceCents() {
+        return salePriceCents;
+    }
+
+    public void setSalePriceCents(Integer salePriceCents) {
+        this.salePriceCents = salePriceCents;
     }
 
     public Integer getDiscountCents() {

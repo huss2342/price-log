@@ -17,6 +17,17 @@ class CostcoDealsFetcherTest {
     private static final String PAGE = """
             <div>
               <span>Buy Online</span>
+              <span>Charmin Ultra Soft Bath Tissue</span>
+              <span>Warehouse</span><span>&amp;</span><span>Online</span>
+              <span>Charmin Ultra Soft Bath Tissue</span>
+              <span>30/197 sheets</span>
+              <span>Item 2048748</span>
+              <span>Limit 2.</span>
+              <span>$</span><span>23</span><span>.</span><span>99</span>
+              <span>After $6 OFF</span>
+            </div>
+            <div>
+              <span>Buy Online</span>
               <span>adidas Men's Quarter Sock</span>
               <span>Warehouse</span><span>&amp;</span><span>Online</span>
               <span>adidas Men's Quarter Sock</span>
@@ -43,16 +54,29 @@ class CostcoDealsFetcherTest {
             """;
 
     @Test
-    void readsTitleItemNumberAndSplitDiscount() {
-        List<PublishedDeal> deals = fetcher.parse(PAGE);
+    void keepsTheSalePriceAndTheAmountOffApart() {
+        // The page prints "$23.99" as the promotional price and "After $6 OFF"
+        // as the saving. Reading the first as a discount would turn a $6 saving
+        // into a $23 one and imply the item costs $1.99.
+        PublishedDeal charmin = fetcher.parse(PAGE).stream()
+                .filter(d -> d.itemNumbers().contains("2048748"))
+                .findFirst()
+                .orElseThrow();
 
-        PublishedDeal sock = deals.stream()
+        assertThat(charmin.title()).isEqualTo("Charmin Ultra Soft Bath Tissue");
+        assertThat(charmin.salePriceCents()).isEqualTo(2399);
+        assertThat(charmin.discountCents()).isEqualTo(600);
+    }
+
+    @Test
+    void readsAPriceSplitAcrossLinesWithNoCents() {
+        PublishedDeal sock = fetcher.parse(PAGE).stream()
                 .filter(d -> d.itemNumbers().contains("1927653"))
                 .findFirst()
                 .orElseThrow();
 
         assertThat(sock.title()).isEqualTo("adidas Men's Quarter Sock");
-        assertThat(sock.discountCents()).isEqualTo(900);
+        assertThat(sock.salePriceCents()).isEqualTo(900);
         assertThat(sock.inWarehouse()).isTrue();
     }
 
@@ -64,7 +88,7 @@ class CostcoDealsFetcherTest {
                 .orElseThrow();
 
         assertThat(tricot.itemNumbers()).containsExactly("1896539", "1896546");
-        assertThat(tricot.discountCents()).isEqualTo(1400);
+        assertThat(tricot.salePriceCents()).isEqualTo(1400);
     }
 
     @Test
@@ -75,6 +99,8 @@ class CostcoDealsFetcherTest {
                 .orElseThrow();
 
         assertThat(chest.discountCents()).isEqualTo(2550);
+        // Only an amount off was printed, so there is no price to claim.
+        assertThat(chest.salePriceCents()).isNull();
     }
 
     @Test
@@ -105,7 +131,7 @@ class CostcoDealsFetcherTest {
                   <span>Warehouse</span>
                   <span>Kirkland Signature Men&#x27;s Sock</span>
                   <span>Item 1234567</span>
-                  <span>$</span><span>5</span>
+                  <span>$</span><span>5</span><span>.</span><span>99</span>
                 </div>
                 """;
 

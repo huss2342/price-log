@@ -42,14 +42,17 @@
               </span>
             </div>
             <div class="right">
-              @if (match.discountCents) {
-                <span class="off">{{ match.discountCents | money }} off</span>
+              @if (match.salePriceCents !== null) {
+                <span class="off">{{ match.salePriceCents | money }}</span>
+                @if (match.discountCents) {
+                  <span class="tiny saving">{{ match.discountCents | money }} off</span>
+                }
+              } @else if (match.impliedPriceCents !== null) {
+                <span class="off">~{{ match.impliedPriceCents | money }}</span>
+                <span class="tiny dim">estimated</span>
               }
-              @if (match.impliedPriceCents !== null) {
-                <span class="tiny dim">
-                  about {{ match.impliedPriceCents | money }}
-                  <s>{{ match.lastPriceCents | money }}</s>
-                </span>
+              @if (match.lastPriceCents !== null) {
+                <span class="tiny dim">you paid {{ match.lastPriceCents | money }}</span>
               }
             </div>
           </div>
