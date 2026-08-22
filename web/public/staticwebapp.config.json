@@ -1,17 +1,18 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/icons/*", "/*.{css,js,json,webmanifest,png,ico,txt}"]
-  },
-  "auth": {
-    "identityProviders": {
-      "github": {}
-    }
+    "exclude": [
+      "/icons/*",
+      "/*.{css,js,json,webmanifest,png,ico,txt}"
+    ]
   },
   "routes": [
     {
       "route": "/.auth/login/github",
-      "allowedRoles": ["anonymous", "authenticated"]
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
     },
     {
       "route": "/.auth/login/aad",
@@ -19,26 +20,43 @@
     },
     {
       "route": "/.auth/*",
-      "allowedRoles": ["anonymous", "authenticated"]
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
     },
     {
       "route": "/ngsw-worker.js",
-      "allowedRoles": ["pricelog"],
-      "headers": { "Cache-Control": "no-cache" }
+      "allowedRoles": [
+        "pricelog"
+      ],
+      "headers": {
+        "Cache-Control": "no-cache"
+      }
     },
     {
       "route": "/ngsw.json",
-      "allowedRoles": ["pricelog"],
-      "headers": { "Cache-Control": "no-cache" }
+      "allowedRoles": [
+        "pricelog"
+      ],
+      "headers": {
+        "Cache-Control": "no-cache"
+      }
     },
     {
       "route": "/config.json",
-      "allowedRoles": ["pricelog"],
-      "headers": { "Cache-Control": "no-store" }
+      "allowedRoles": [
+        "pricelog"
+      ],
+      "headers": {
+        "Cache-Control": "no-store"
+      }
     },
     {
       "route": "/*",
-      "allowedRoles": ["pricelog"]
+      "allowedRoles": [
+        "pricelog"
+      ]
     }
   ],
   "responseOverrides": {
