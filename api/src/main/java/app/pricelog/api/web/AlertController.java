@@ -30,16 +30,21 @@ public class AlertController {
     }
 
     /**
+     * Every field is a wrapper, never a primitive. Jackson 3 rejects a null for
+     * a primitive rather than defaulting it, so an omitted flag would fail the
+     * whole request with a 400 instead of meaning "leave it alone".
+     *
      * @param clearTarget send true to remove a target price, since a null
      *                    target is indistinguishable from "not sent"
      */
-    public record WatchRequest(Boolean watched, Integer targetPriceCents, boolean clearTarget) {
+    public record WatchRequest(Boolean watched, Integer targetPriceCents, Boolean clearTarget) {
     }
 
     @PutMapping("/products/{productId}/watch")
     public ObservationWatchView watch(@PathVariable Long productId, @RequestBody WatchRequest request) {
         var product = alerts.setWatched(
-                productId, request.watched(), request.targetPriceCents(), request.clearTarget());
+                productId, request.watched(), request.targetPriceCents(),
+                Boolean.TRUE.equals(request.clearTarget()));
         return new ObservationWatchView(
                 product.getId(), product.isWatched(), product.getTargetPriceCents());
     }
