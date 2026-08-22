@@ -1,5 +1,6 @@
 package app.pricelog.api.capture;
 
+import app.pricelog.api.alerts.PriceHistoryService;
 import app.pricelog.api.domain.*;
 import app.pricelog.api.extract.*;
 import app.pricelog.api.repo.PriceObservationRepository;
@@ -34,6 +35,7 @@ public class CaptureService {
     private final TagRuleEngine ruleEngine;
     private final StoreRepository stores;
     private final PriceObservationRepository observations;
+    private final PriceHistoryService priceHistory;
     private final ObjectMapper mapper;
 
     public CaptureService(PhotoStore photos,
@@ -42,6 +44,7 @@ public class CaptureService {
                           TagRuleEngine ruleEngine,
                           StoreRepository stores,
                           PriceObservationRepository observations,
+                          PriceHistoryService priceHistory,
                           ObjectMapper mapper) {
         this.photos = photos;
         this.extractor = extractor;
@@ -49,6 +52,7 @@ public class CaptureService {
         this.ruleEngine = ruleEngine;
         this.stores = stores;
         this.observations = observations;
+        this.priceHistory = priceHistory;
         this.mapper = mapper;
     }
 
@@ -102,6 +106,9 @@ public class CaptureService {
         observation.setRawExtraction(toJson(tag));
         observation.setTagInsights(verdict.matched());
         observation.setAdvice(verdict.advice());
+
+        // Must run before the save, while "previous" still excludes this sighting.
+        priceHistory.attachHistory(observation);
 
         observations.save(observation);
 

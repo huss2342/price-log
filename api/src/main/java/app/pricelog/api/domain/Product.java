@@ -58,6 +58,14 @@ public class Product {
     @Enumerated(EnumType.STRING)
     private Set<QualityAttribute> attributes = EnumSet.noneOf(QualityAttribute.class);
 
+    /** Flagged for the alerts screen. */
+    @Column(nullable = false)
+    private boolean watched = false;
+
+    /** Optional "tell me when it reaches this", in cents. */
+    @Column(name = "target_price_cents")
+    private Integer targetPriceCents;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -154,6 +162,22 @@ public class Product {
 
     public void setAttributes(Set<QualityAttribute> attributes) {
         this.attributes = attributes;
+    }
+
+    public boolean isWatched() {
+        return watched;
+    }
+
+    public void setWatched(boolean watched) {
+        this.watched = watched;
+    }
+
+    public Integer getTargetPriceCents() {
+        return targetPriceCents;
+    }
+
+    public void setTargetPriceCents(Integer targetPriceCents) {
+        this.targetPriceCents = targetPriceCents;
     }
 
     public Instant getCreatedAt() {

@@ -85,6 +85,21 @@ public class PriceObservation {
     @Column(length = 255)
     private String advice;
 
+    /**
+     * What this item cost when it was last seen, and when. Captured at the
+     * moment of this sighting so "down $3.20 since June" needs no extra query
+     * and stays true to what was known that day.
+     */
+    @Column(name = "previous_price_cents")
+    private Integer previousPriceCents;
+
+    @Column(name = "previous_observed_on")
+    private LocalDate previousObservedOn;
+
+    /** The lowest price seen for this item before this sighting. */
+    @Column(name = "lowest_before_cents")
+    private Integer lowestBeforeCents;
+
     @Column(length = 512)
     private String notes;
 
@@ -241,6 +256,30 @@ public class PriceObservation {
 
     public void setAdvice(String advice) {
         this.advice = advice;
+    }
+
+    public Integer getPreviousPriceCents() {
+        return previousPriceCents;
+    }
+
+    public void setPreviousPriceCents(Integer previousPriceCents) {
+        this.previousPriceCents = previousPriceCents;
+    }
+
+    public LocalDate getPreviousObservedOn() {
+        return previousObservedOn;
+    }
+
+    public void setPreviousObservedOn(LocalDate previousObservedOn) {
+        this.previousObservedOn = previousObservedOn;
+    }
+
+    public Integer getLowestBeforeCents() {
+        return lowestBeforeCents;
+    }
+
+    public void setLowestBeforeCents(Integer lowestBeforeCents) {
+        this.lowestBeforeCents = lowestBeforeCents;
     }
 
     public String getNotes() {

@@ -27,6 +27,7 @@ export class ObservationCard {
   readonly removed = output<number>();
 
   protected readonly chainLabels = CHAIN_LABELS;
+  protected readonly watching = signal(false);
   protected readonly editing = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -97,6 +98,43 @@ export class ObservationCard {
     this.api.deleteObservation(this.observation().id).subscribe({
       next: () => this.removed.emit(this.observation().id),
       error: (err) => this.error.set(err?.error?.error ?? 'Could not delete.'),
+    });
+  }
+
+  /**
+   * The change since the last sighting, phrased the way it would be said out
+   * loud. Returns null when this is the first time the item has been seen.
+   */
+  protected changeSummary(): { text: string; tone: string } | null {
+    const o = this.observation();
+    if (o.changeCents === null || o.previousPriceCents === null) return null;
+
+    const magnitude = `$${(Math.abs(o.changeCents) / 100).toFixed(2)}`;
+    const since = o.previousObservedOn ? ` since ${o.previousObservedOn}` : '';
+    const was = `was $${(o.previousPriceCents / 100).toFixed(2)}`;
+
+    if (o.changeCents < 0) {
+      const percent = o.changePercent === null ? '' : ` (${Math.abs(o.changePercent)}% off)`;
+      return { text: `Down ${magnitude}${percent} — ${was}${since}`, tone: 'good' };
+    }
+    if (o.changeCents > 0) {
+      return { text: `Up ${magnitude} — ${was}${since}`, tone: 'urgent' };
+    }
+    return { text: `Same price as${since || ' last time'}`, tone: 'neutral' };
+  }
+
+  protected toggleWatch(): void {
+    const o = this.observation();
+    this.watching.set(true);
+    this.api.setWatch(o.productId, { watched: !o.watched }).subscribe({
+      next: (saved) => {
+        this.watching.set(false);
+        this.changed.emit({ ...o, watched: saved.watched, targetPriceCents: saved.targetPriceCents });
+      },
+      error: (err) => {
+        this.watching.set(false);
+        this.error.set(err?.error?.error ?? 'Could not update the watchlist.');
+      },
     });
   }
 

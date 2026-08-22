@@ -1,0 +1,116 @@
+<main class="page">
+  <h1>On sale now</h1>
+
+  @if (error(); as message) {
+    <div class="error">{{ message }}</div>
+  }
+
+  @if (deals(); as view) {
+    <div class="card row-between">
+      <span class="tiny dim">
+        @if (view.lastCheckedAt) {
+          Costco listed {{ view.totalDeals }} offers, checked {{ view.lastCheckedAt | date: 'short' }}
+        } @else {
+          Costco's list has not been read yet
+        }
+      </span>
+      <button class="btn tiny-btn" [disabled]="loading()" (click)="load(true)">
+        {{ loading() ? 'Checking…' : 'Check now' }}
+      </button>
+    </div>
+
+    @if (view.error) {
+      <div class="card warn-box tiny">
+        Costco's page could not be read, so this list may be out of date.
+        <span class="dim">{{ view.error }}</span>
+      </div>
+    }
+
+    @if (view.matches.length) {
+      <p class="tiny dim">
+        Matched by Costco's item number against tags you've photographed, so these are
+        the same product, not a name that merely looks similar.
+      </p>
+      @for (match of view.matches; track match.itemNumber + match.dealTitle) {
+        <article class="card deal">
+          <div class="row-between">
+            <div class="left">
+              <strong>{{ match.productName }}</strong>
+              <span class="tiny dim">{{ match.dealTitle }}</span>
+              <span class="tiny dim">
+                item {{ match.itemNumber }} · you last saw it {{ match.daysSinceSeen | ago }}
+              </span>
+            </div>
+            <div class="right">
+              @if (match.discountCents) {
+                <span class="off">{{ match.discountCents | money }} off</span>
+              }
+              @if (match.impliedPriceCents !== null) {
+                <span class="tiny dim">
+                  about {{ match.impliedPriceCents | money }}
+                  <s>{{ match.lastPriceCents | money }}</s>
+                </span>
+              }
+            </div>
+          </div>
+          <div class="row wrap">
+            @if (match.watched) {
+              <span class="badge badge-warn">★ watching</span>
+            }
+            @if (match.inWarehouse) {
+              <span class="badge badge-good">valid in warehouse</span>
+            } @else {
+              <span class="badge badge-neutral">online only</span>
+            }
+          </div>
+        </article>
+      }
+    } @else if (!loading()) {
+      <div class="card dim">
+        Nothing you've logged is on Costco's current savings list. The more tags you
+        photograph, the more this catches.
+      </div>
+    }
+  } @else if (loading()) {
+    <div class="card dim">Checking Costco…</div>
+  }
+
+  <h2>Watching</h2>
+  @if (watchlist().length) {
+    @for (item of watchlist(); track item.productId) {
+      <article class="card deal">
+        <div class="row-between">
+          <div class="left">
+            <strong>{{ item.productName }}</strong>
+            <span class="tiny dim">
+              last {{ item.lastPriceCents | money }} · best ever {{ item.bestPriceCents | money }}
+              · seen {{ item.daysSinceSeen | ago }}
+            </span>
+          </div>
+          <button class="btn tiny-btn" (click)="unwatch(item)">★</button>
+        </div>
+
+        <div class="row wrap">
+          @if (item.dueForSale) {
+            <span class="badge badge-warn">due for a sale</span>
+          }
+          @if (item.meetsTarget) {
+            <span class="badge badge-good">at your target</span>
+          }
+          @if (item.targetPriceCents) {
+            <span class="badge badge-neutral">target {{ item.targetPriceCents | money }}</span>
+          }
+        </div>
+
+        @if (cycleSummary(item); as summary) {
+          <p class="tiny dim no-margin">{{ summary }}</p>
+        }
+      </article>
+    }
+  } @else {
+    <div class="card dim">
+      Nothing on the watchlist. Tap <strong>☆ Watch</strong> on any logged price to track
+      how often it goes on sale.
+    </div>
+  }
+</main>

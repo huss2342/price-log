@@ -4,6 +4,9 @@ import { Observable } from 'rxjs';
 import { Settings } from './settings';
 import type {
   CompareGroup,
+  DealsView,
+  SaleCycle,
+  WatchedItem,
   Observation,
   ObservationUpdate,
   Store,
@@ -80,6 +83,31 @@ export class Api {
 
   deleteStore(id: number): Observable<void> {
     return this.http.delete<void>(this.url(`/api/stores/${id}`));
+  }
+
+  /** @param force re-read Costco's listing even if the cached copy is fresh */
+  deals(force = false): Observable<DealsView> {
+    return this.http.get<DealsView>(this.url('/api/deals'), {
+      params: new HttpParams().set('force', String(force)),
+    });
+  }
+
+  watchlist(): Observable<WatchedItem[]> {
+    return this.http.get<WatchedItem[]>(this.url('/api/watchlist'));
+  }
+
+  saleCycle(productId: number): Observable<SaleCycle> {
+    return this.http.get<SaleCycle>(this.url(`/api/products/${productId}/cycle`));
+  }
+
+  setWatch(
+    productId: number,
+    body: { watched?: boolean; targetPriceCents?: number | null; clearTarget?: boolean },
+  ): Observable<{ productId: number; watched: boolean; targetPriceCents: number | null }> {
+    return this.http.put<{ productId: number; watched: boolean; targetPriceCents: number | null }>(
+      this.url(`/api/products/${productId}/watch`),
+      body,
+    );
   }
 
   tagRules(): Observable<TagRule[]> {

@@ -111,3 +111,32 @@ header {
 summary {
   cursor: pointer;
 }
+
+/* The comparison to last time is the headline, not a footnote. */
+.change {
+  margin: 0;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.change-good {
+  background: var(--good-bg);
+  color: var(--good);
+}
+
+.change-urgent {
+  background: var(--urgent-bg);
+  color: var(--urgent);
+}
+
+.change-neutral {
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+
+.watch.watching {
+  color: var(--warn);
+  font-weight: 700;
+}
