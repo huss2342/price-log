@@ -93,7 +93,22 @@ az containerapp env create -n "$ENVIRONMENT" -g "$RG" -l "$LOCATION" -o none 2>/
 # An Azure Container Registry would cost about $5 a month, several times the
 # rest of this app combined.
 echo "==> Container image"
-IMAGE="ghcr.io/$GHCR_OWNER/price-log-api:latest"
+# Deployed by digest, never by the ":latest" tag. Container Apps compares the
+# image reference to decide whether the spec changed, so redeploying an
+# unchanged ":latest" creates no new revision and silently keeps serving the
+# previous build. A digest changes whenever the image does, and unlike a commit
+# SHA tag it always exists, even for commits that did not rebuild the image.
+REPO="ghcr.io/$GHCR_OWNER/price-log-api"
+DIGEST=$(gh api "user/packages/container/price-log-api/versions" \
+  --jq '[.[] | select(.metadata.container.tags[]? == "latest")][0].name' 2>/dev/null || echo "")
+
+if [[ "$DIGEST" == sha256:* ]]; then
+  IMAGE="$REPO@$DIGEST"
+else
+  echo "    WARNING: could not resolve the image digest; falling back to :latest," >&2
+  echo "             which may not roll out a new revision." >&2
+  IMAGE="$REPO:latest"
+fi
 GHCR_TOKEN="${GHCR_TOKEN:-$(gh auth token 2>/dev/null || true)}"
 if [[ -z "$GHCR_TOKEN" ]]; then
   echo "ERROR: no GHCR token. Run 'gh auth login', or export GHCR_TOKEN with a" >&2
