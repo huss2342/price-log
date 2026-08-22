@@ -49,6 +49,67 @@ export interface Observation {
   /** Plain-language readings of every tag rule that matched. */
   tagInsights: string[];
   advice: string | null;
+
+  // How this price compares to the past. Always present, because "is this
+  // cheaper than last time" is the question being asked at the shelf.
+  watched: boolean;
+  targetPriceCents: number | null;
+  previousPriceCents: number | null;
+  previousObservedOn: string | null;
+  /** Negative means it got cheaper since the last sighting. */
+  changeCents: number | null;
+  changePercent: number | null;
+  lowestBeforeCents: number | null;
+  lowestEver: boolean;
+  meetsTarget: boolean;
+}
+
+export interface DealMatch {
+  productId: number;
+  productName: string;
+  brand: string | null;
+  itemNumber: string;
+  dealTitle: string;
+  discountCents: number | null;
+  inWarehouse: boolean;
+  watched: boolean;
+  lastPriceCents: number | null;
+  /** Last price minus the published discount; an estimate, not a quote. */
+  impliedPriceCents: number | null;
+  lastSeenOn: string;
+  daysSinceSeen: number;
+}
+
+export interface DealsView {
+  matches: DealMatch[];
+  totalDeals: number;
+  lastCheckedAt: string | null;
+  error: string | null;
+}
+
+export interface SaleCycle {
+  salesSeen: number;
+  averageGapDays: number | null;
+  lastSaleOn: string | null;
+  daysSinceLastSale: number | null;
+  /** Negative when the next sale already looks overdue. */
+  dueInDays: number | null;
+  confident: boolean;
+}
+
+export interface WatchedItem {
+  productId: number;
+  productName: string;
+  brand: string | null;
+  itemNumber: string | null;
+  targetPriceCents: number | null;
+  lastPriceCents: number | null;
+  bestPriceCents: number | null;
+  lastSeenOn: string;
+  daysSinceSeen: number;
+  meetsTarget: boolean;
+  cycle: SaleCycle;
+  dueForSale: boolean;
 }
 
 export interface StoreOffer {

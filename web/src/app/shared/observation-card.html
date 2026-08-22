@@ -16,8 +16,18 @@
     </div>
   </header>
 
+  @if (changeSummary(); as change) {
+    <p class="change change-{{ change.tone }}">{{ change.text }}</p>
+  }
+
   <div class="row wrap">
     <span class="badge badge-neutral">{{ chainLabels[o.chain] }}</span>
+    @if (o.lowestEver) {
+      <span class="badge badge-good">cheapest you've seen it</span>
+    }
+    @if (o.meetsTarget) {
+      <span class="badge badge-good">hit your target</span>
+    }
     <app-signal-badge [signal]="o.saleSignal" />
     @if (o.discontinued) {
       <span class="badge badge-urgent">Buy now — not restocking</span>
@@ -161,6 +171,15 @@
         </button>
       }
       <a class="btn" [routerLink]="['/browse']" [queryParams]="{ q: o.productName }">Compare</a>
+      <button
+        class="btn watch"
+        [class.watching]="o.watched"
+        [disabled]="watching()"
+        [attr.aria-pressed]="o.watched"
+        (click)="toggleWatch()"
+      >
+        {{ o.watched ? '★ Watching' : '☆ Watch' }}
+      </button>
       <button class="btn btn-danger" (click)="remove()" aria-label="Delete this price">✕</button>
     </div>
   }

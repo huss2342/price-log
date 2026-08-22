@@ -11,6 +11,27 @@ public interface PriceObservationRepository extends JpaRepository<PriceObservati
 
     long countByStoreId(Long storeId);
 
+    /** Newest first, so the first row is the most recent sighting. */
+    List<PriceObservation> findByProductIdOrderByObservedOnDescIdDesc(Long productId);
+
+    @Query("select min(o.priceCents) from PriceObservation o where o.product.id = :productId")
+    Integer findLowestPriceCents(@Param("productId") Long productId);
+
+    @Query("""
+            select distinct o.itemNumber from PriceObservation o
+            where o.itemNumber is not null and o.store.chain = :chain
+            """)
+    List<String> findItemNumbersForChain(@Param("chain") app.pricelog.api.domain.Chain chain);
+
+    @Query("""
+            select o from PriceObservation o
+            join fetch o.product p
+            join fetch o.store s
+            where p.watched = true
+            order by o.observedOn desc, o.id desc
+            """)
+    List<PriceObservation> findWatched();
+
     @Query("""
             select o from PriceObservation o
             join fetch o.product p

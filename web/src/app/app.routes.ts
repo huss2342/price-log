@@ -18,6 +18,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/group/group').then((m) => m.GroupPage),
   },
   {
+    path: 'deals',
+    title: 'On sale now',
+    loadComponent: () => import('./pages/deals/deals').then((m) => m.DealsPage),
+  },
+  {
     path: 'review',
     title: 'Review queue',
     loadComponent: () => import('./pages/review/review').then((m) => m.ReviewPage),

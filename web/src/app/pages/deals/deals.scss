@@ -1,0 +1,45 @@
+.deal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+
+.off {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--good);
+}
+
+.warn-box {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.tiny-btn {
+  min-height: 34px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.wrap {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.no-margin {
+  margin: 0;
+}
