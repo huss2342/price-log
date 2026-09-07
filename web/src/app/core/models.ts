@@ -83,6 +83,18 @@ export interface DealMatch {
   daysSinceSeen: number;
 }
 
+/** One published promotion, as listed rather than as matched to your log. */
+export interface BrowsedDeal {
+  itemNumber: string | null;
+  title: string;
+  salePriceCents: number | null;
+  discountCents: number | null;
+  inWarehouse: boolean;
+  logged: boolean;
+  firstSeenOn: string;
+  lastSeenOn: string;
+}
+
 export interface DealsView {
   matches: DealMatch[];
   totalDeals: number;

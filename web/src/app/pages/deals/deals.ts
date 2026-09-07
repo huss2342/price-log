@@ -1,12 +1,13 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Api } from '../../core/api';
 import type { DealsView, WatchedItem } from '../../core/models';
 import { AgoPipe, MoneyPipe } from '../../shared/format';
 
 @Component({
   selector: 'app-deals',
-  imports: [MoneyPipe, AgoPipe, DatePipe],
+  imports: [MoneyPipe, AgoPipe, DatePipe, RouterLink],
   templateUrl: './deals.html',
   styleUrl: './deals.scss',
 })
