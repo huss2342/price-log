@@ -153,10 +153,20 @@ az containerapp secret set -n "$APP" -g "$RG" --secrets \
   "storage-connection=$STORAGE_CONNECTION" \
   "app-api-key=$API_KEY" -o none
 
+# Container Apps only starts new replicas when the revision spec changes, and
+# a secret's *value* is not part of that spec -- so rotating the API key and
+# re-running this script used to change nothing at all, leaving the old key
+# live. Naming the revision after a hash of the resolved config fixes that: an
+# unchanged config yields the same suffix and no new revision, while a rotated
+# key yields a different one and forces every replica to re-resolve.
+CONFIG_HASH=$(printf '%s' "$IMAGE|$API_KEY|$DATABASE_URL|$OPENAI_ENDPOINT" \
+  | { sha256sum 2>/dev/null || shasum -a 256; } | cut -c1-10)
+
 # The front end origin is not known until the Static Web App exists, so CORS is
 # set after it is created, below.
 az containerapp update -n "$APP" -g "$RG" \
   --image "$IMAGE" \
+  --revision-suffix "cfg$CONFIG_HASH" \
   --min-replicas 0 --max-replicas 1 \
   --cpu 0.5 --memory 1.0Gi \
   --set-env-vars \
@@ -180,19 +190,6 @@ SWA_HOST=$(az staticwebapp show -n "$SWA" -g "$RG" --query defaultHostname -o ts
 
 echo "==> Building the PWA"
 (cd "$ROOT/web" && npm ci && npx ng build --configuration production)
-
-# The API key is written into the published site rather than into the source
-# tree, so it never reaches git. The site is behind a GitHub sign-in limited to
-# one account, and staticwebapp.config.json restricts /config.json to that same
-# role, so only the signed-in owner can read it. That is what lets the app
-# configure itself with no typing on any device.
-echo "==> Writing the protected runtime config"
-cat > "$ROOT/web/dist/web/browser/config.json" <<CONFIG
-{
-  "apiBase": "$API_URL",
-  "apiKey": "$API_KEY"
-}
-CONFIG
 
 echo "==> Uploading the PWA"
 npx --yes @azure/static-web-apps-cli@latest deploy \
@@ -224,7 +221,8 @@ The key is stripped from the address bar on load, so it does not linger in
 history. On iOS a home-screen app gets its own storage, so open the link again
 from inside the installed app after "Add to Home Screen".
 
-To revoke every device at once, rotate the key and re-run this script:
+To revoke every device at once, rotate the key and re-run this script. The
+re-run is what applies it: setting the secret alone restarts nothing.
 
   az containerapp secret set -n $APP -g $RG \
     --secrets "app-api-key=\$(openssl rand -hex 24)"
