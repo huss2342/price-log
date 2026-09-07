@@ -14,6 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -74,6 +76,9 @@ public class CaptureService {
 
         // Only keep the photo once the tag is known to be usable.
         String photoKey = photos.store(imageBytes, contentType, "tag");
+        // Blob writes are outside the transaction, so a later failure would
+        // strand the file with no row pointing at it. Undo it on rollback.
+        deletePhotoIfRolledBack(photoKey);
 
         if (store == null) {
             store = resolveStoreFromTag(tag);
@@ -178,6 +183,25 @@ public class CaptureService {
             log.debug("Ignoring unparseable sale end date from tag: {}", raw);
             return null;
         }
+    }
+
+    private void deletePhotoIfRolledBack(String photoKey) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_COMMITTED) {
+                    return;
+                }
+                try {
+                    photos.delete(photoKey);
+                } catch (RuntimeException e) {
+                    log.warn("Capture failed and its photo {} could not be cleaned up", photoKey, e);
+                }
+            }
+        });
     }
 
     private String toJson(ExtractedTag tag) {

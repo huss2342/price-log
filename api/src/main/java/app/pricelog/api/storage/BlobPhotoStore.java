@@ -61,6 +61,11 @@ public class BlobPhotoStore implements PhotoStore {
         }
     }
 
+    @Override
+    public void delete(String key) {
+        container.getBlobClient(key).deleteIfExists();
+    }
+
     private String extensionFor(String contentType) {
         if (contentType == null) {
             return ".jpg";

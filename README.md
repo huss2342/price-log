@@ -117,9 +117,12 @@ than duplicated:
 Everything this app owns lives in the separate `price-log` resource group, so
 the bill stays readable.
 
-The API scales to zero, so the first photo after an idle period waits a few
-seconds for a cold start. Setting `--min-replicas 1` removes that but costs
-roughly $15/month, which is the single biggest lever on the bill.
+The API scales to zero, so the first request after an idle period pays a cold
+start: measured at about 35 seconds to a healthy `/actuator/health`, of which
+roughly 10 is Spring Boot starting and the rest is pulling and scheduling the
+container. Every subsequent capture takes about 6 seconds. Setting
+`--min-replicas 1` removes the cold start but costs roughly $15/month, which is
+the single biggest lever on the bill.
 
 ## API
 
@@ -134,6 +137,7 @@ roughly $15/month, which is the single biggest lever on the bill.
 | `PUT` | `/api/observations/{id}` | Correct a reading; re-derives unit price and tag meaning |
 | `GET`/`POST` | `/api/stores` | Your warehouses |
 | `GET`/`PUT` | `/api/tag-rules` | Store tag conventions |
+| `DELETE` | `/api/observations/{id}` | Remove a reading, and the photo it came from |
 
 Everything except `/actuator/health` requires an `X-API-Key` header when
 `APP_API_KEY` is set.
