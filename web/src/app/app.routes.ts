@@ -1,10 +1,12 @@
 import { Routes } from '@angular/router';
+import { writerGuard } from './core/writer.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'capture' },
   {
     path: 'capture',
     title: 'Snap a tag',
+    canMatch: [writerGuard],
     loadComponent: () => import('./pages/capture/capture').then((m) => m.CapturePage),
   },
   {
@@ -31,6 +33,7 @@ export const routes: Routes = [
   {
     path: 'review',
     title: 'Review queue',
+    canMatch: [writerGuard],
     loadComponent: () => import('./pages/review/review').then((m) => m.ReviewPage),
   },
   {
@@ -38,5 +41,5 @@ export const routes: Routes = [
     title: 'Settings',
     loadComponent: () => import('./pages/settings/settings-page').then((m) => m.SettingsPage),
   },
-  { path: '**', redirectTo: 'capture' },
+  { path: '**', redirectTo: 'browse' },
 ];

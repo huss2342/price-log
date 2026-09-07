@@ -46,6 +46,16 @@ export class Settings {
     });
   }
 
+  /**
+   * Whether this device may change anything. Reading is open to everyone so the
+   * log can be shown to people; captures spend a vision call per photo and
+   * every mutation is the owner's, so both need the key. Without one the app
+   * runs read-only rather than offering buttons that will be refused.
+   */
+  canWrite(): boolean {
+    return this.apiKey().trim().length > 0;
+  }
+
   /** True once the app knows where the API lives. */
   isConfigured(): boolean {
     return this.apiBase().trim().length > 0;
