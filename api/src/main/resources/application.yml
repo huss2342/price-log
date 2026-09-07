@@ -53,6 +53,14 @@ pricelog:
     connection-string: ${STORAGE_CONNECTION_STRING:}
     container: ${STORAGE_CONTAINER:tag-photos}
 
+  deals:
+    # Costco publishes no API, so this is scraped from their public page. The
+    # listing changes at most daily, and every offer is already persisted in
+    # deal_sighting, so re-reading more often buys nothing and only adds a slow
+    # request to whoever happens to open the Deals screen first.
+    costco-url: ${DEALS_COSTCO_URL:https://www.costco.com/o/-/warehouse-savings}
+    max-age-hours: ${DEALS_MAX_AGE_HOURS:24}
+
   azure-openai:
     endpoint: ${AZURE_OPENAI_ENDPOINT:}
     api-key: ${AZURE_OPENAI_API_KEY:}
