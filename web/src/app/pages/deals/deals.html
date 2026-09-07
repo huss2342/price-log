@@ -16,9 +16,13 @@
           Costco's list has not been read yet
         }
       </span>
-      <button class="btn tiny-btn" [disabled]="loading()" (click)="load(true)">
-        {{ loading() ? 'Checking…' : 'Check now' }}
-      </button>
+      @if (settings.canWrite()) {
+        <!-- Forcing a refresh scrapes Costco on the owner's behalf, so it is
+             not offered to a visitor. -->
+        <button class="btn tiny-btn" [disabled]="loading()" (click)="load(true)">
+          {{ loading() ? 'Checking…' : 'Check now' }}
+        </button>
+      }
     </div>
 
     @if (view.error) {
@@ -92,7 +96,9 @@
               · seen {{ item.daysSinceSeen | ago }}
             </span>
           </div>
-          <button class="btn tiny-btn" (click)="unwatch(item)">★</button>
+          @if (settings.canWrite()) {
+            <button class="btn tiny-btn" (click)="unwatch(item)">★</button>
+          }
         </div>
 
         <div class="row wrap">

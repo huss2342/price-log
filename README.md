@@ -88,7 +88,22 @@ from inside the installed app.
 
 ### Who can use it
 
-One person: whoever holds the API key.
+Anyone may read it. Only the key holder may change it.
+
+Reading is open so the log can be shown to people. Everything that spends money
+is not: a capture costs an Azure OpenAI call per photo, and forcing a deals
+refresh costs an upstream scrape, so both require the key -- as does every
+mutation, since a public log nobody can edit is a showcase and a public log
+anybody can edit is a liability.
+
+Anonymous reads are rate limited to a 60-request burst refilling at one per
+second per address. Not to protect the model budget, which they cannot touch,
+but the database: it is a Burstable B1ms shared with a production app and this
+pool is capped at three connections, so an unthrottled crawler on a public URL
+would be felt elsewhere.
+
+The front end runs read-only without a key -- the capture and review screens are
+withheld rather than offered and refused.
 
 The site itself is public, and is deliberately empty — a static shell with no
 key in it, which can read nothing until one is supplied. It used to sit behind
