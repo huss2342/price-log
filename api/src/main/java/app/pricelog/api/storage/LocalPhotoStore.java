@@ -50,6 +50,15 @@ public class LocalPhotoStore implements PhotoStore {
         }
     }
 
+    @Override
+    public void delete(String key) {
+        try {
+            Files.deleteIfExists(resolve(key));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not delete photo " + key, e);
+        }
+    }
+
     /** Resolves inside the root and rejects keys that try to climb out of it. */
     private Path resolve(String key) {
         Path target = root.resolve(key).normalize();

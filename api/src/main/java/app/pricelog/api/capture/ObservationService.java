@@ -9,23 +9,31 @@ import app.pricelog.api.extract.TagVerdict;
 import app.pricelog.api.repo.PriceObservationRepository;
 import app.pricelog.api.repo.ProductRepository;
 import app.pricelog.api.repo.StoreRepository;
+import app.pricelog.api.storage.PhotoStore;
 import app.pricelog.api.web.ObservationUpdate;
 import java.util.List;
 import java.util.NoSuchElementException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class ObservationService {
 
+    private static final Logger log = LoggerFactory.getLogger(ObservationService.class);
+
     private final PriceObservationRepository observations;
     private final ProductRepository products;
     private final StoreRepository stores;
     private final ProductResolver productResolver;
     private final TagRuleEngine ruleEngine;
+    private final PhotoStore photos;
     private final ObjectMapper mapper;
 
     public ObservationService(PriceObservationRepository observations,
@@ -33,12 +41,14 @@ public class ObservationService {
                               StoreRepository stores,
                               ProductResolver productResolver,
                               TagRuleEngine ruleEngine,
+                              PhotoStore photos,
                               ObjectMapper mapper) {
         this.observations = observations;
         this.products = products;
         this.stores = stores;
         this.productResolver = productResolver;
         this.ruleEngine = ruleEngine;
+        this.photos = photos;
         this.mapper = mapper;
     }
 
@@ -185,9 +195,47 @@ public class ObservationService {
         }
     }
 
+    /**
+     * Deletes the observation and the photo it was read from. Without this the
+     * blob outlives every row that referenced it, and nothing ever collects it.
+     * The file is removed only after the delete commits, so a rolled-back
+     * transaction cannot destroy a photo its row still points at.
+     */
     @Transactional
     public void delete(Long id) {
-        observations.deleteById(id);
+        PriceObservation observation = observations.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("No observation " + id));
+        String photoKey = observation.getPhotoUrl();
+        observations.delete(observation);
+        if (photoKey != null && !photoKey.isBlank()) {
+            afterCommit(() -> removePhoto(photoKey));
+        }
+    }
+
+    /**
+     * Storage is not transactional, so photo cleanup is deferred to commit and
+     * its failures are logged rather than thrown: the row is already gone, and
+     * a stranded file is not worth failing the caller's request over.
+     */
+    private void removePhoto(String key) {
+        try {
+            photos.delete(key);
+        } catch (RuntimeException e) {
+            log.warn("Deleted the observation but could not delete its photo {}", key, e);
+        }
+    }
+
+    private void afterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
     }
 
     @Transactional(readOnly = true)

@@ -51,6 +51,18 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
+    /**
+     * Anything not handled above. Without this an unexpected failure returns an
+     * unshaped container error with no stack trace in the logs, which makes a
+     * capture that silently records nothing effectively undiagnosable.
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> unexpected(Exception e) {
+        log.error("Unhandled failure", e);
+        return error(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Something went wrong handling that request. The details are in the server log.");
+    }
+
     private ResponseEntity<Map<String, String>> error(HttpStatus status, String message) {
         return ResponseEntity.status(status).body(Map.of("error", message == null ? status.getReasonPhrase() : message));
     }
