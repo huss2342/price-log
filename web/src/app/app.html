@@ -1,10 +1,12 @@
 <router-outlet />
 
 <nav class="tabs" aria-label="Main">
-  <a routerLink="/capture" routerLinkActive="active" ariaCurrentWhenActive="page">
-    <span class="glyph" aria-hidden="true">◉</span>
-    <span>Snap</span>
-  </a>
+  @if (settings.canWrite()) {
+    <a routerLink="/capture" routerLinkActive="active" ariaCurrentWhenActive="page">
+      <span class="glyph" aria-hidden="true">◉</span>
+      <span>Snap</span>
+    </a>
+  }
   <a routerLink="/browse" routerLinkActive="active" ariaCurrentWhenActive="page">
     <span class="glyph" aria-hidden="true">⌕</span>
     <span>Browse</span>
@@ -13,10 +15,12 @@
     <span class="glyph" aria-hidden="true">★</span>
     <span>Deals</span>
   </a>
-  <a routerLink="/review" routerLinkActive="active" ariaCurrentWhenActive="page">
-    <span class="glyph" aria-hidden="true">✓</span>
-    <span>Review</span>
-  </a>
+  @if (settings.canWrite()) {
+    <a routerLink="/review" routerLinkActive="active" ariaCurrentWhenActive="page">
+      <span class="glyph" aria-hidden="true">✓</span>
+      <span>Review</span>
+    </a>
+  }
   <a routerLink="/settings" routerLinkActive="active" ariaCurrentWhenActive="page">
     <span class="glyph" aria-hidden="true">⚙</span>
     <span>Settings</span>

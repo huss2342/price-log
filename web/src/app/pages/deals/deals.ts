@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Api } from '../../core/api';
+import { Settings } from '../../core/settings';
 import type { DealsView, WatchedItem } from '../../core/models';
 import { AgoPipe, MoneyPipe } from '../../shared/format';
 
@@ -13,6 +14,7 @@ import { AgoPipe, MoneyPipe } from '../../shared/format';
 })
 export class DealsPage implements OnInit {
   private readonly api = inject(Api);
+  protected readonly settings = inject(Settings);
 
   protected readonly deals = signal<DealsView | null>(null);
   protected readonly watchlist = signal<WatchedItem[]>([]);
