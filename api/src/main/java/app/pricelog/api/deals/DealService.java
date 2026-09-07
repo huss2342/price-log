@@ -24,8 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>The refresh is lazy rather than scheduled, because the container scales to
  * zero: a timer would simply never fire while the app is asleep. Opening the
- * deals screen refreshes it if the cache has aged out, which also keeps the
- * number of requests to Costco to a couple a day.
+ * deals screen refreshes it if the cache has aged out, which holds Costco to at
+ * most one read a day. Browsing the stored listing never triggers a read at
+ * all -- the rows are already there, and outlive the container.
  */
 @Service
 public class DealService {
@@ -42,7 +43,7 @@ public class DealService {
                        DealRepository deals,
                        DealRefreshRepository refreshes,
                        PriceObservationRepository observations,
-                       @Value("${pricelog.deals.max-age-hours:12}") long maxAgeHours) {
+                       @Value("${pricelog.deals.max-age-hours:24}") long maxAgeHours) {
         this.fetcher = fetcher;
         this.deals = deals;
         this.refreshes = refreshes;
