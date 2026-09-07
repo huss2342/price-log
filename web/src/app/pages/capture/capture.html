@@ -39,6 +39,9 @@
   </section>
 
   <label class="shutter">
+    <!-- capture="environment" opens the camera straight away, which is what you
+         want in the aisle. It also suppresses the photo library, so the picker
+         below exists for tags photographed earlier. -->
     <input
       type="file"
       accept="image/*"
@@ -50,6 +53,12 @@
     <span class="lens" aria-hidden="true">◉</span>
     <span class="shutter-text">Photograph a price tag</span>
     <span class="tiny">Take several — they upload in the background</span>
+  </label>
+
+  <label class="from-library">
+    <input type="file" accept="image/*" multiple (change)="onFiles($event)" hidden />
+    <span class="lens-small" aria-hidden="true">⬆</span>
+    <span>Upload photos you already took</span>
   </label>
 
   @if (outbox.pendingCount() > 0) {
