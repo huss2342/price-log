@@ -2,6 +2,7 @@ package app.pricelog.api.config;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -69,6 +70,18 @@ class ApiKeyFilterTest {
     void aWrongKeyIsNoBetterThanNone() throws Exception {
         mvc.perform(post("/api/captures").header("X-API-Key", "nope"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * A capture with no photo attached is the caller's mistake, not the
+     * server's. The catch-all handler once relabelled Spring's own 400 as a
+     * 500, which hides a client error inside the server error log.
+     */
+    @Test
+    void aMalformedCaptureIsABadRequestNotAServerFault() throws Exception {
+        // A well-formed multipart upload that simply omits the "photo" part.
+        mvc.perform(multipart("/api/captures").header("X-API-Key", KEY))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
