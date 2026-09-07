@@ -7,13 +7,24 @@
 #   Static Web Apps  free tier                                      $0
 #   Blob Storage     cool tier, a few thousand photos              ~$0.10/mo
 #   Azure OpenAI     ~$0.001 per photo read                        ~$0.50/mo
-#   PostgreSQL       the `pricelog` database on the existing
-#                    prm-db-server-dest, already paid for           $0
+#   PostgreSQL       the `pricelog` database on an existing server,
+#                    already paid for                               $0
 #
 # Credentials are read from the existing key vault, so nothing needs to be
 # exported before running this.
 #
 set -euo pipefail
+
+# Everything that names a real Azure resource is read from the environment, so
+# this file can be public without publishing an estate's inventory. Put your own
+# values in infra/deploy.env, which is git-ignored; deploy.env.example lists
+# every variable. Resources this app owns keep working defaults, because their
+# names are only meaningful inside your own subscription.
+ENV_FILE="${ENV_FILE:-$(dirname "${BASH_SOURCE[0]}")/deploy.env}"
+if [[ -f "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+fi
 
 RG="${RG:-price-log}"
 LOCATION="${LOCATION:-eastus}"
@@ -27,24 +38,20 @@ SWA_LOCATION="${SWA_LOCATION:-eastus2}"
 # Storage account names must be globally unique and lowercase alphanumeric.
 STORAGE="${STORAGE:-pricelogphotos$(az account show --query id -o tsv | tr -d '-' | cut -c1-8)}"
 STORAGE_CONTAINER="${STORAGE_CONTAINER:-tag-photos}"
-
-# Shared resources are reused from the existing production group rather than
-# duplicated: the model quota, the database server, and the key vault all
-# already exist and are already paid for.
-SHARED_RG="${SHARED_RG:-prm-production}"
-OPENAI_ACCOUNT="${OPENAI_ACCOUNT:-prm-openai-eastus}"
 OPENAI_DEPLOYMENT="${OPENAI_DEPLOYMENT:-tag-extractor}"
-KEYVAULT="${KEYVAULT:-prm-prod-kv-dest}"
-
-# The `pricelog` database and the `pricelog_app` login live on the shared
-# server but are isolated from prm_db: that role holds no privileges there.
-DB_SERVER="${DB_SERVER:-prm-db-server-dest}"
 DB_NAME="${DB_NAME:-pricelog}"
-DB_USER="${DB_USER:-pricelog_app}"
-DB_SECRET="${DB_SECRET:-pricelog-db-password}"
 
-# GitHub Actions builds the API image and pushes it here on every push to main.
-GHCR_OWNER="${GHCR_OWNER:-huss2342}"
+# These name resources this app does not own -- an existing model deployment,
+# database server and key vault it borrows rather than duplicates. They have no
+# defaults on purpose: a wrong guess here points a deploy at somebody else's
+# infrastructure, and naming them in a public file is free reconnaissance.
+: "${SHARED_RG:?set SHARED_RG in infra/deploy.env (see deploy.env.example)}"
+: "${OPENAI_ACCOUNT:?set OPENAI_ACCOUNT in infra/deploy.env}"
+: "${KEYVAULT:?set KEYVAULT in infra/deploy.env}"
+: "${DB_SERVER:?set DB_SERVER in infra/deploy.env}"
+: "${DB_USER:?set DB_USER in infra/deploy.env}"
+: "${DB_SECRET:?set DB_SECRET in infra/deploy.env}"
+: "${GHCR_OWNER:?set GHCR_OWNER in infra/deploy.env}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
