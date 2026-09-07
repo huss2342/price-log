@@ -87,7 +87,13 @@ else
 fi
 
 echo "==> Container Apps environment"
-az containerapp env create -n "$ENVIRONMENT" -g "$RG" -l "$LOCATION" -o none 2>/dev/null || true
+# Guarded rather than create-and-ignore-the-error: with no --logs-workspace-id,
+# `env create` provisions a fresh Log Analytics workspace *before* it discovers
+# the environment already exists, so swallowing the failure leaked one orphan
+# workspace per deploy.
+if ! az containerapp env show -n "$ENVIRONMENT" -g "$RG" -o none 2>/dev/null; then
+  az containerapp env create -n "$ENVIRONMENT" -g "$RG" -l "$LOCATION" -o none
+fi
 
 # The image is built by GitHub Actions and pulled from GHCR, which is free.
 # An Azure Container Registry would cost about $5 a month, several times the

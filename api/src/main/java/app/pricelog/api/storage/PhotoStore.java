@@ -14,6 +14,12 @@ public interface PhotoStore {
 
     Optional<StoredPhoto> load(String key);
 
+    /**
+     * Removes a stored photo. Deleting an absent key is not an error, so this
+     * is safe to call during cleanup without first checking existence.
+     */
+    void delete(String key);
+
     record StoredPhoto(byte[] bytes, String contentType) {
     }
 }
