@@ -58,6 +58,36 @@
   opacity: 0.85;
 }
 
+/* Secondary on purpose: shooting in the aisle stays the primary path. But
+   without this, a roll of tags photographed earlier cannot be logged at all,
+   because capture="environment" hides the library picker. */
+.from-library {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.from-library:active {
+  transform: translateY(1px);
+}
+
+.lens-small {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 .queued {
   display: flex;
   flex-direction: column;
