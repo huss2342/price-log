@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Api } from '../core/api';
 import { CHAIN_LABELS, type Observation, type ObservationUpdate, type Store } from '../core/models';
 import { MoneyPipe, UnitPricePipe } from './format';
+import { PhotoSrc } from './photo-src';
 import { SignalBadge } from './signal-badge';
 
 /**
@@ -13,7 +14,7 @@ import { SignalBadge } from './signal-badge';
  */
 @Component({
   selector: 'app-observation-card',
-  imports: [FormsModule, RouterLink, MoneyPipe, UnitPricePipe, SignalBadge],
+  imports: [FormsModule, RouterLink, MoneyPipe, UnitPricePipe, PhotoSrc, SignalBadge],
   templateUrl: './observation-card.html',
   styleUrl: './observation-card.scss',
 })
@@ -136,10 +137,6 @@ export class ObservationCard {
         this.error.set(err?.error?.error ?? 'Could not update the watchlist.');
       },
     });
-  }
-
-  protected photoSrc(key: string): string {
-    return this.api.photoUrl(key);
   }
 
   protected patch<K extends keyof ObservationUpdate>(key: K, value: ObservationUpdate[K]): void {
