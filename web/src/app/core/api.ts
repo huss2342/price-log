@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Settings } from './settings';
 import type {
+  BrowsedDeal,
   CompareGroup,
   DealsView,
   SaleCycle,
@@ -90,6 +91,15 @@ export class Api {
     return this.http.get<DealsView>(this.url('/api/deals'), {
       params: new HttpParams().set('force', String(force)),
     });
+  }
+
+  /** The whole published listing, not just what matched something logged. */
+  publishedDeals(query: string, warehouseOnly: boolean): Observable<BrowsedDeal[]> {
+    let params = new HttpParams().set('warehouseOnly', String(warehouseOnly));
+    if (query.trim()) {
+      params = params.set('q', query.trim());
+    }
+    return this.http.get<BrowsedDeal[]>(this.url('/api/deals/published'), { params });
   }
 
   watchlist(): Observable<WatchedItem[]> {

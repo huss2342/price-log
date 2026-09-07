@@ -132,6 +132,52 @@ public class DealService {
         refreshes.save(state);
     }
 
+    /**
+     * The whole active listing, not just what matched. Costco publishes a couple
+     * of hundred offers and the deals screen only ever surfaces the few that
+     * touch something already logged, so without this the rest are invisible
+     * even though they are already stored.
+     *
+     * @param query optional case-insensitive filter on the title or item number
+     * @param warehouseOnly drop online-only offers, which cannot be picked up
+     *                      on a warehouse trip
+     */
+    @Transactional(readOnly = true)
+    public List<BrowsedDeal> browse(String query, boolean warehouseOnly) {
+        Set<String> logged = new HashSet<>(observations.findItemNumbersForChain(Chain.COSTCO));
+        String needle = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+
+        return deals.findByChainAndActiveTrue(Chain.COSTCO).stream()
+                .filter(d -> !warehouseOnly || d.isInWarehouse())
+                .filter(d -> needle.isEmpty()
+                        || d.getTitle().toLowerCase(Locale.ROOT).contains(needle)
+                        || (d.getItemNumber() != null && d.getItemNumber().contains(needle)))
+                .map(d -> new BrowsedDeal(
+                        d.getItemNumber(),
+                        d.getTitle(),
+                        d.getSalePriceCents(),
+                        d.getDiscountCents(),
+                        d.isInWarehouse(),
+                        d.getItemNumber() != null && logged.contains(d.getItemNumber()),
+                        d.getFirstSeenOn(),
+                        d.getLastSeenOn()))
+                // Items you already buy first, then the biggest savings.
+                .sorted(Comparator
+                        .comparing(BrowsedDeal::logged).reversed()
+                        .thenComparing(Comparator.comparing(
+                                (BrowsedDeal b) -> savingOf(b)).reversed())
+                        .thenComparing(BrowsedDeal::title))
+                .toList();
+    }
+
+    /** Ranks on whatever figure the listing gave: the discount, else the price. */
+    private static int savingOf(BrowsedDeal deal) {
+        if (deal.discountCents() != null) {
+            return deal.discountCents();
+        }
+        return 0;
+    }
+
     /** Joins active promotions to logged items on the retailer's item number. */
     private List<DealMatch> match() {
         List<String> itemNumbers = observations.findItemNumbersForChain(Chain.COSTCO);

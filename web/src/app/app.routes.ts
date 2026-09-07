@@ -23,6 +23,12 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/deals/deals').then((m) => m.DealsPage),
   },
   {
+    path: 'deals/published',
+    title: "Costco's listing",
+    loadComponent: () =>
+      import('./pages/published-deals/published-deals').then((m) => m.PublishedDealsPage),
+  },
+  {
     path: 'review',
     title: 'Review queue',
     loadComponent: () => import('./pages/review/review').then((m) => m.ReviewPage),
