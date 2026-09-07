@@ -88,36 +88,23 @@ from inside the installed app.
 
 ### Who can use it
 
-Anyone may read it. Only the key holder may change it.
+One person: whoever holds the API key. Nothing is readable without it.
 
-Reading is open so the log can be shown to people. Everything that spends money
-is not: a capture costs an Azure OpenAI call per photo, and forcing a deals
-refresh costs an upstream scrape, so both require the key -- as does every
-mutation, since a public log nobody can edit is a showcase and a public log
-anybody can edit is a liability.
+Showing the app to someone does not require opening the log. A browser with no
+key runs against a built-in sample dataset instead of the API -- eight product
+comparisons across three clubs, with the pack sizes and markdown signals that
+make the unit-price ranking worth looking at. It is labelled as sample data on
+every screen, it reaches no network at all, and so it also sidesteps the cold
+start a visitor would otherwise sit through. `?demo=1` forces it on for the
+owner's own browser; `?demo=0` clears it.
 
-Anonymous reads are rate limited to a 60-request burst refilling at one per
-second per address. Not to protect the model budget, which they cannot touch,
-but the database: it is a Burstable B1ms shared with a production app and this
-pool is capped at three connections, so an unthrottled crawler on a public URL
-would be felt elsewhere.
-
-The front end runs read-only without a key -- the capture and review screens are
-withheld rather than offered and refused.
-
-The site itself is public, and is deliberately empty — a static shell with no
-key in it, which can read nothing until one is supplied. It used to sit behind
-a Static Web Apps GitHub sign-in, but that gate only ever protected the
-delivery of the key, not the data: the API is on the public internet either
-way, and the key is what guards it. The gate also broke on iOS, where Safari's
-cross-site tracking prevention blocks the cookie exchange with
-`identity.7.azurestaticapps.net`, leaving the app unusable on the one device it
-was built for.
-
-So the key is the whole story, and it is treated accordingly: sent only as the
-`X-API-Key` header, never as a query parameter, so it stays out of browser
-history and access logs. Photos are fetched as bytes and shown from an object
-URL rather than pointed at with an `<img src>` carrying the secret.
+A deployment that does want to publish its real log can set `PUBLIC_READ=true`,
+which opens every GET. Even then the spending stays shut: captures, mutations,
+and `force=true` on the deals endpoint all still require the key, and anonymous
+reads are rate limited to a 60-request burst refilling at one per second per
+address -- not to protect the model budget, which they cannot reach, but the
+database, a Burstable B1ms shared with a production app behind a three
+connection pool.
 
 To revoke every device at once, rotate the key and redeploy:
 

@@ -134,12 +134,27 @@ public class PriceLogProperties {
         /** Shared secret sent as the X-API-Key header. Empty disables the check. */
         private String apiKey = "";
 
+        /**
+         * Whether anyone may read the log without the key. Off by default: the
+         * showcase is served by the front end's demo data, so opening the real
+         * log buys nothing and exposes a household's shopping and tag photos.
+         */
+        private boolean publicRead = false;
+
         public String getApiKey() {
             return apiKey;
         }
 
         public void setApiKey(String apiKey) {
             this.apiKey = apiKey;
+        }
+
+        public boolean isPublicRead() {
+            return publicRead;
+        }
+
+        public void setPublicRead(boolean publicRead) {
+            this.publicRead = publicRead;
         }
     }
 }

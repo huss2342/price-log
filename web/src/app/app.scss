@@ -33,3 +33,22 @@
   font-size: 1.25rem;
   line-height: 1;
 }
+
+/* Deliberately unmissable but not alarming: a visitor should register that the
+   numbers are invented without the page looking broken. */
+.demo-banner {
+  margin: 0;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.82rem;
+  text-align: center;
+  background: var(--surface-2, #eef2f7);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.demo-banner strong {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+  margin-right: 0.25rem;
+}
