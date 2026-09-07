@@ -4,20 +4,36 @@ name: Build API image
 # Container Registry is needed. Deployment itself stays in infra/deploy.sh,
 # run locally with the az CLI — that avoids storing Azure credentials here.
 on:
+  # Deliberately unfiltered by path. The tests only matter for api/**, but the
+  # secret scan matters for every file, and a path filter here would let a key
+  # land in web/ or infra/ without a single check running.
   push:
     branches: [main]
-    paths:
-      - 'api/**'
-      - '.github/workflows/build-api.yml'
-  # Pull requests run the tests but publish nothing, so a change is checked
-  # before it reaches main rather than after the image is already built.
   pull_request:
-    paths:
-      - 'api/**'
-      - '.github/workflows/build-api.yml'
   workflow_dispatch:
 
 jobs:
+  # A public repo is one careless commit away from publishing a key. This runs
+  # on the full history, not just the diff, so a secret cannot arrive quietly in
+  # a branch and be merged later.
+  secrets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The scan walks history, so a shallow clone would check almost
+          # nothing.
+          fetch-depth: 0
+
+      # The published action is not used here: it asks the GitHub API for the
+      # pull request's commits, which the default token may not read, and that
+      # turns a clean scan into a failed job. The image needs no token and no
+      # API, and is pinned so a new release cannot change the verdict silently.
+      - name: Scan history for secrets
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1             detect --source /repo --redact --no-banner --exit-code 1
+
   # The image build passes -DskipTests to keep the Docker layer cache useful,
   # so this is the only thing that actually runs the suite.
   test:
@@ -36,9 +52,9 @@ jobs:
         working-directory: ./api
 
   build:
-    # Nothing reaches GHCR unless the suite passed, so ":latest" is never a
-    # build that failed its tests.
-    needs: test
+    # Nothing reaches GHCR unless the suite passed and the scan was clean, so
+    # ":latest" is never a build that failed its tests or carries a secret.
+    needs: [test, secrets]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:

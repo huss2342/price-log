@@ -48,7 +48,7 @@ The API needs a JDK 21 (Java 25 without `javac` will not compile it):
 
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
-export AZURE_OPENAI_ENDPOINT=https://my-openai-account.openai.azure.com/
+export AZURE_OPENAI_ENDPOINT=https://your-account.openai.azure.com/
 export AZURE_OPENAI_API_KEY=...          # az cognitiveservices account keys list
 cd api && ./mvnw spring-boot:run
 ```
@@ -72,7 +72,7 @@ Two stages, split so that no Azure credentials ever live on GitHub and no
 container registry has to be paid for:
 
 1. **GitHub Actions builds the API image** on every push to `main` and pushes
-   it to `ghcr.io/huss2342/price-log-api`. GHCR is free; an Azure Container
+   it to `ghcr.io/<owner>/price-log-api`. GHCR is free; an Azure Container
    Registry would cost about $5 a month, several times the rest of this app.
 2. **`infra/deploy.sh` deploys**, run locally against the `az` CLI. It reads
    every credential from the existing key vault, so nothing needs exporting.
@@ -123,27 +123,28 @@ access token that only has `read:packages`.
 | PWA | Static Web Apps, free tier | $0 |
 | API | Container Apps, scales to zero, inside the free grant | ~$0 |
 | Photos | Blob Storage, cool tier | ~$0.10 |
-| Database | `pricelog` on the existing `my-postgres-server` | $0 |
+| Database | `pricelog` on an existing Postgres server | $0 |
 | Tag reading | gpt-5-mini vision, ~$0.001 per photo | ~$0.50 |
 
 No custom domain; the free `*.azurestaticapps.net` hostname is used.
 
 ### What it reuses
 
-Three things already existed in the `prm` subscription and are shared rather
-than duplicated:
+Three things already existed in the subscription and are shared rather than
+duplicated. All three are named in `infra/deploy.env`, which is not committed --
+see `deploy.env.example`.
 
-- **`my-openai-account`** — a `tag-extractor` deployment (gpt-5-mini,
+- **An Azure OpenAI account** — a `tag-extractor` deployment (gpt-5-mini,
   GlobalStandard) was added to it.
-- **`my-postgres-server`** — a Postgres 17 Burstable B1ms. A separate
-  `pricelog` database was created on it with its own `pricelog_app` login.
-  That role owns the `pricelog` schema and holds **no privileges on `the-shared-database`**;
-  it can open a connection there but sees zero tables. Because the server is
-  shared with prm production, the connection pool is capped at 3.
-- **`my-key-vault`** — holds `pricelog-db-password`.
+- **A Postgres 17 Burstable B1ms.** A separate `pricelog` database was created
+  on it with its own login. That role owns the `pricelog` schema and holds **no
+  privileges on anything else the server hosts**; it can open a connection but
+  sees zero tables. Because the server is shared with a production workload, the
+  connection pool is capped at 3.
+- **A key vault** — holds the database password.
 
-Everything this app owns lives in the separate `price-log` resource group, so
-the bill stays readable.
+Everything this app owns lives in its own `price-log` resource group, so the
+bill stays readable.
 
 The API scales to zero, so the first request after an idle period pays a cold
 start: measured at about 35 seconds to a healthy `/actuator/health`, of which

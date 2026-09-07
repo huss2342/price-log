@@ -5,3 +5,6 @@ web/dist/
 web/.angular/
 .env
 *.log
+
+# Names real Azure resources. deploy.env.example is the committed template.
+infra/deploy.env

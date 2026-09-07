@@ -79,8 +79,9 @@ spring:
       on-profile: prod
 
   datasource:
-    # The `pricelog` database on the existing my-postgres-server flexible
-    # server. It has its own login, which has no privileges on the-shared-database.
+    # The `pricelog` database on an existing PostgreSQL flexible server, named
+    # in infra/deploy.env. It has its own login, which holds no privileges on
+    # anything else that server hosts.
     url: ${DATABASE_URL}
     username: ${DATABASE_USER}
     password: ${DATABASE_PASSWORD}

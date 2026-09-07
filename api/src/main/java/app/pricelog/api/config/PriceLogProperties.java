@@ -22,7 +22,7 @@ public class PriceLogProperties {
     }
 
     public static class AzureOpenAi {
-        /** Resource endpoint, e.g. https://my-openai-account.openai.azure.com */
+        /** Resource endpoint, e.g. https://your-account.openai.azure.com */
         private String endpoint = "";
         private String apiKey = "";
         /** Deployment name, not the model name. */
