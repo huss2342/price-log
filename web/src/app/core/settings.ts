@@ -3,14 +3,17 @@ import { Injectable, signal, effect } from '@angular/core';
 const KEY = 'pricelog.settings';
 
 /**
- * The deployed API. Baked in so a fresh install is usable without typing a URL;
- * still overridable in Settings, and localhost wins during development.
+ * Where the API lives, when nothing has said otherwise.
+ *
+ * <p>Development points at the local server. Anywhere else it is left empty on
+ * purpose: this repo is public, and baking one deployment's hostname in would
+ * aim every fork at that same API. A deployed install gets its address from the
+ * ?api= setup link, which carries the key it needs anyway, so there is nothing
+ * extra to type either way.
  */
-const HOSTED_API = 'https://price-log-api.greencoast-8c619113.eastus.azurecontainerapps.io';
-
 function defaultApiBase(): string {
   const host = location.hostname;
-  return host === 'localhost' || host === '127.0.0.1' ? 'http://localhost:8080' : HOSTED_API;
+  return host === 'localhost' || host === '127.0.0.1' ? 'http://localhost:8080' : '';
 }
 
 interface Persisted {
