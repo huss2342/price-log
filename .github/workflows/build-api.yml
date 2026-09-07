@@ -9,10 +9,37 @@ on:
     paths:
       - 'api/**'
       - '.github/workflows/build-api.yml'
+  # Pull requests run the tests but publish nothing, so a change is checked
+  # before it reaches main rather than after the image is already built.
+  pull_request:
+    paths:
+      - 'api/**'
+      - '.github/workflows/build-api.yml'
   workflow_dispatch:
 
 jobs:
+  # The image build passes -DskipTests to keep the Docker layer cache useful,
+  # so this is the only thing that actually runs the suite.
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - run: ./mvnw -B test
+        working-directory: ./api
+
   build:
+    # Nothing reaches GHCR unless the suite passed, so ":latest" is never a
+    # build that failed its tests.
+    needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
