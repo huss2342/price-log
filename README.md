@@ -81,8 +81,34 @@ container registry has to be paid for:
 ./infra/deploy.sh
 ```
 
-It prints the app URL, the API URL, and a generated API key. Enter the last two
-in the app's Settings screen, then use the browser's *Add to Home Screen*.
+It prints a setup link that carries the API URL and key. Open it once per
+device and the app configures itself, then use *Add to Home Screen*. On iOS an
+installed app gets storage separate from Safari, so open the link a second time
+from inside the installed app.
+
+### Who can use it
+
+One person: whoever holds the API key.
+
+The site itself is public, and is deliberately empty — a static shell with no
+key in it, which can read nothing until one is supplied. It used to sit behind
+a Static Web Apps GitHub sign-in, but that gate only ever protected the
+delivery of the key, not the data: the API is on the public internet either
+way, and the key is what guards it. The gate also broke on iOS, where Safari's
+cross-site tracking prevention blocks the cookie exchange with
+`identity.7.azurestaticapps.net`, leaving the app unusable on the one device it
+was built for.
+
+So the key is the whole story, and it is treated accordingly: sent only as the
+`X-API-Key` header, never as a query parameter, so it stays out of browser
+history and access logs. Photos are fetched as bytes and shown from an object
+URL rather than pointed at with an `<img src>` carrying the secret.
+
+To revoke every device at once, rotate the key and redeploy:
+
+```bash
+az containerapp secret set -n price-log-api -g price-log   --secrets "app-api-key=$(openssl rand -hex 24)"
+```
 
 The script pulls a GHCR token from `gh auth token` by default. For a
 longer-lived credential, export `GHCR_TOKEN` with a fine-grained personal

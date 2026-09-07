@@ -46,28 +46,6 @@ export class Settings {
     });
   }
 
-  /**
-   * Reads /config.json, which the deploy writes into the published site but
-   * never into git. The site sits behind a GitHub sign-in restricted to a
-   * single account, so a key served from there can only ever be downloaded by
-   * that account — which is what makes shipping it safe.
-   *
-   * Anything already configured on this device wins, so a manual override or a
-   * setup link is never silently replaced.
-   */
-  async loadHostedConfig(): Promise<void> {
-    try {
-      const response = await fetch('/config.json', { cache: 'no-store' });
-      if (!response.ok) return;
-
-      const config = (await response.json()) as Partial<Persisted>;
-      if (config.apiBase && !this.storedApiBase) this.apiBase.set(config.apiBase);
-      if (config.apiKey && !this.apiKey()) this.apiKey.set(config.apiKey);
-    } catch {
-      // No hosted config, or offline. Settings can still be filled in by hand.
-    }
-  }
-
   /** True once the app knows where the API lives. */
   isConfigured(): boolean {
     return this.apiBase().trim().length > 0;
