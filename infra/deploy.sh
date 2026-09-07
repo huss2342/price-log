@@ -200,17 +200,6 @@ npx --yes @azure/static-web-apps-cli@latest deploy \
   --deployment-token "$SWA_TOKEN" \
   --env production
 
-echo "==> Restricting the site to one GitHub account"
-# Idempotent: re-inviting an account that already holds the role is harmless.
-# The invitation link has to be opened once, by that account, to take effect.
-INVITE=$(az staticwebapp users invite -n "$SWA" -g "$RG" \
-  --authentication-provider GitHub \
-  --user-details "$GHCR_OWNER" \
-  --role pricelog \
-  --domain "$SWA_HOST" \
-  --invitation-expiration-in-hours 168 \
-  --query invitationUrl -o tsv 2>/dev/null || true)
-
 echo "==> Allowing the PWA origin through CORS"
 az containerapp update -n "$APP" -g "$RG" \
   --set-env-vars "ALLOWED_ORIGINS=https://$SWA_HOST" -o none
@@ -221,16 +210,25 @@ Deployed.
 
   App       https://$SWA_HOST
   API       $API_URL
-  API key   $API_KEY  (already baked into the site; kept here for curl)
+  API key   $API_KEY
 
-The site is restricted to the GitHub account $GHCR_OWNER. Open it on your
-phone, sign in with GitHub once, then "Add to Home Screen". The app reads its
-own configuration, so there is nothing to type.
+The site is public, and is an empty shell: it carries no key and can read
+nothing until one is supplied. The API key is the only thing that grants access
+to your data, so treat the link below the way you would treat a password.
 
-If access is refused, open this one-time invitation with that GitHub account:
+Open this once on each device and it configures itself:
 
-  ${INVITE:-<already a member, or re-run to generate one>}
+  https://$SWA_HOST/capture?api=$API_URL&key=$API_KEY
+
+The key is stripped from the address bar on load, so it does not linger in
+history. On iOS a home-screen app gets its own storage, so open the link again
+from inside the installed app after "Add to Home Screen".
+
+To revoke every device at once, rotate the key and re-run this script:
+
+  az containerapp secret set -n $APP -g $RG \
+    --secrets "app-api-key=\$(openssl rand -hex 24)"
 
 The API scales to zero when unused, so the first photo after an idle period
-takes a few extra seconds while it starts.
+waits about 35 seconds for a cold start.
 SUMMARY

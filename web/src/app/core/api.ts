@@ -119,12 +119,13 @@ export class Api {
   }
 
   /**
-   * Photos are served from a private container behind the API key, and an
-   * <img> tag cannot send headers, so the key rides as a query parameter.
+   * Photos come back as bytes rather than as a URL an <img> can point at, so
+   * the key travels in a header like every other call. It used to ride as a
+   * query parameter -- an <img> cannot send headers -- which wrote the secret
+   * into browser history and into any access log along the way. The caller
+   * turns this into an object URL; see the appPhotoSrc directive.
    */
-  photoUrl(key: string): string {
-    const base = this.url(`/api/photos/${key}`);
-    const apiKey = this.settings.apiKey();
-    return apiKey ? `${base}?apiKey=${encodeURIComponent(apiKey)}` : base;
+  photoBlob(key: string): Observable<Blob> {
+    return this.http.get(this.url(`/api/photos/${key}`), { responseType: 'blob' });
   }
 }
