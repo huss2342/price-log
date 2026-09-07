@@ -22,11 +22,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # The scan walks history, so a shallow clone would check almost
+          # nothing.
           fetch-depth: 0
 
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The published action is not used here: it asks the GitHub API for the
+      # pull request's commits, which the default token may not read, and that
+      # turns a clean scan into a failed job. The image needs no token and no
+      # API, and is pinned so a new release cannot change the verdict silently.
+      - name: Scan history for secrets
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1             detect --source /repo --redact --no-banner --exit-code 1
 
   # The image build passes -DskipTests to keep the Docker layer cache useful,
   # so this is the only thing that actually runs the suite.
