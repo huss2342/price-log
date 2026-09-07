@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -52,12 +53,25 @@ public class ApiExceptionHandler {
     }
 
     /**
-     * Anything not handled above. Without this an unexpected failure returns an
-     * unshaped container error with no stack trace in the logs, which makes a
-     * capture that silently records nothing effectively undiagnosable.
+     * Anything not handled above.
+     *
+     * <p>Spring's own MVC exceptions are separated out first. They already
+     * carry the right status -- a missing multipart part is a 400, not a server
+     * fault -- and relabelling them as 500 buries a caller's mistake in the
+     * error log. They implement {@link ErrorResponse} but share no common
+     * supertype, so the split is a type check rather than another handler.
+     *
+     * <p>Everything past that is genuinely unexpected, and without this it
+     * returns an unshaped container error with no stack trace, which is what
+     * once made a capture that recorded nothing effectively undiagnosable.
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> unexpected(Exception e) {
+        if (e instanceof ErrorResponse spring) {
+            HttpStatus status = HttpStatus.valueOf(spring.getStatusCode().value());
+            log.debug("Rejecting a malformed request: {}", status);
+            return error(status, spring.getBody().getDetail());
+        }
         log.error("Unhandled failure", e);
         return error(HttpStatus.INTERNAL_SERVER_ERROR,
                 "Something went wrong handling that request. The details are in the server log.");
