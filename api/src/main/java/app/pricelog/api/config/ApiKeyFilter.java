@@ -13,11 +13,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Splits the API into a public read side and a private write side.
  *
- * <p>Reading is open so the log can be shown to people. Everything that costs
- * money is not: a capture spends an Azure OpenAI call per photo, and forcing a
- * deals refresh spends an upstream scrape, so both need the key. So does every
- * mutation, since a public log nobody can edit is a showcase and a public log
- * anybody can edit is a liability.
+ * <p>Reading is closed by default. The showcase is served by the front end's
+ * own sample data, so opening the real log buys nothing and exposes a
+ * household's shopping and its tag photos. Setting
+ * {@code pricelog.auth.public-read} opens every GET for a deployment that does
+ * want to publish.
+ *
+ * <p>Even then, what costs money stays shut: a capture spends an Azure OpenAI
+ * call per photo, and forcing a deals refresh spends an upstream scrape, so
+ * both need the key. So does every mutation, since a public log nobody can edit
+ * is a showcase and a public log anybody can edit is a liability.
  *
  * <p>The secret is only ever read from the header. The photo endpoint used to
  * also accept it as a query parameter, so an {@code <img>} could point straight
@@ -28,10 +33,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class ApiKeyFilter extends OncePerRequestFilter {
 
     private final String expectedKey;
+    private final boolean publicRead;
     private final AnonymousRateLimiter rateLimiter;
 
     public ApiKeyFilter(PriceLogProperties properties, AnonymousRateLimiter rateLimiter) {
         this.expectedKey = properties.getAuth().getApiKey();
+        this.publicRead = properties.getAuth().isPublicRead();
         this.rateLimiter = rateLimiter;
     }
 
@@ -72,7 +79,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
      * but it triggers a fresh scrape of Costco's site.
      */
     private boolean isPublicRead(HttpServletRequest request) {
-        if (!"GET".equalsIgnoreCase(request.getMethod())) {
+        if (!publicRead || !"GET".equalsIgnoreCase(request.getMethod())) {
             return false;
         }
         return !Boolean.parseBoolean(request.getParameter("force"));

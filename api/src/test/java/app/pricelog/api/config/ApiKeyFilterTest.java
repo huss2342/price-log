@@ -14,12 +14,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * The log is readable by anyone so it can be shown to people; everything that
- * spends money or changes state is not. Getting this boundary wrong either
- * breaks the showcase or hands a stranger the owner's Azure OpenAI bill, so it
- * is pinned here rather than left to inspection.
+ * The boundary with public reads switched on. Getting it wrong either breaks a
+ * published log or hands a stranger the owner's Azure OpenAI bill, so it is
+ * pinned here rather than left to inspection.
+ *
+ * <p>{@link ApiKeyFilterClosedTest} covers the shipped default, where reads are
+ * shut too.
  */
-@SpringBootTest(properties = "pricelog.auth.api-key=test-key-for-the-filter")
+@SpringBootTest(properties = {
+        "pricelog.auth.api-key=test-key-for-the-filter",
+        "pricelog.auth.public-read=true",
+})
 @AutoConfigureMockMvc
 class ApiKeyFilterTest {
 
