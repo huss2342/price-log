@@ -1,0 +1,72 @@
+<header class="page-head">
+  <a routerLink="/deals" class="back">← Deals</a>
+  <h1>Costco's listing</h1>
+</header>
+
+<form class="filters" (ngSubmit)="load()">
+  <input
+    type="search"
+    [ngModel]="query()"
+    (ngModelChange)="query.set($event)"
+    name="q"
+    placeholder="Search title or item number"
+    autocomplete="off"
+  />
+  <button type="submit" class="btn btn-primary">Search</button>
+</form>
+
+<div class="row-between toggles">
+  <button class="btn" [class.btn-primary]="warehouseOnly()" (click)="toggleWarehouse()">
+    {{ warehouseOnly() ? 'In warehouse only' : 'All offers' }}
+  </button>
+  @if (query()) {
+    <button class="btn" (click)="clear()">Clear search</button>
+  }
+</div>
+
+@if (loading()) {
+  <p class="dim">Loading…</p>
+} @else if (error()) {
+  <p class="error">{{ error() }}</p>
+} @else {
+  <p class="tiny dim">
+    {{ deals().length }} offer{{ deals().length === 1 ? '' : 's' }}. Items you have
+    photographed are listed first.
+  </p>
+
+  @for (deal of deals(); track deal.itemNumber ?? deal.title) {
+    <article class="card deal" [class.is-logged]="deal.logged">
+      <div class="row-between">
+        <strong class="title">{{ deal.title }}</strong>
+        @if (deal.logged) {
+          <span class="badge">in your log</span>
+        }
+      </div>
+      <div class="figures">
+        @if (deal.salePriceCents !== null) {
+          <span class="price">{{ deal.salePriceCents | money }}</span>
+        }
+        @if (deal.discountCents !== null) {
+          <span class="off">{{ deal.discountCents | money }} off</span>
+        }
+        @if (deal.salePriceCents === null && deal.discountCents === null) {
+          <span class="tiny dim">No price printed in the listing</span>
+        }
+      </div>
+      <p class="tiny dim no-margin">
+        @if (deal.itemNumber) {
+          Item {{ deal.itemNumber }} ·
+        }
+        @if (!deal.inWarehouse) {
+          online only ·
+        }
+        seen since {{ deal.firstSeenOn }}
+      </p>
+    </article>
+  } @empty {
+    <p class="dim">
+      Nothing matches. Costco's listing refreshes at most twice a day — try the
+      Deals screen's refresh if it looks stale.
+    </p>
+  }
+}

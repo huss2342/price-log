@@ -9,7 +9,9 @@
     <div class="card row-between">
       <span class="tiny dim">
         @if (view.lastCheckedAt) {
-          Costco listed {{ view.totalDeals }} offers, checked {{ view.lastCheckedAt | date: 'short' }}
+          Costco listed
+          <a routerLink="/deals/published">{{ view.totalDeals }} offers</a>, checked
+          {{ view.lastCheckedAt | date: 'short' }}
         } @else {
           Costco's list has not been read yet
         }
