@@ -45,6 +45,8 @@ pricelog:
   auth:
     # Empty disables the check entirely, which is the local development default.
     api-key: ${APP_API_KEY:}
+    # Off by default; the front end's demo data is what gets shown to people.
+    public-read: ${PUBLIC_READ:false}
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}
 
   photos:
