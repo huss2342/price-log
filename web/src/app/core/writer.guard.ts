@@ -11,5 +11,7 @@ export const writerGuard: CanMatchFn = () => {
   if (inject(Settings).canWrite()) {
     return true;
   }
-  return inject(Router).createUrlTree(['/browse']);
+  // Deals, not Browse: Browse opens empty until something is searched, which is
+  // a poor first thing to see, while Deals has matches and a watchlist on it.
+  return inject(Router).createUrlTree(['/deals']);
 };

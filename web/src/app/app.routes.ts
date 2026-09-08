@@ -41,5 +41,5 @@ export const routes: Routes = [
     title: 'Settings',
     loadComponent: () => import('./pages/settings/settings-page').then((m) => m.SettingsPage),
   },
-  { path: '**', redirectTo: 'browse' },
+  { path: '**', redirectTo: 'deals' },
 ];

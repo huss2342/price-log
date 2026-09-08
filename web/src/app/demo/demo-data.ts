@@ -158,6 +158,58 @@ const SEEDS: GroupSeed[] = [
     ],
   },
   {
+    key: 'SEAFOOD|salmon-fillet|farmed-atlantic',
+    label: 'Salmon fillet — farmed Atlantic',
+    category: 'SEAFOOD',
+    attributes: ['farmed-atlantic'],
+    unit: 'OZ',
+    brandBy: { 1: 'Kirkland Signature', 3: 'Fremont Fish Market' },
+    nameBy: { 1: 'KS ATLANTIC SALMON 3LB', 3: 'FREMONT ATLANTIC SALMON 16OZ' },
+    offers: [
+      { store: 1, price: 3399, size: 48, days: 6 },
+      { store: 3, price: 1299, size: 16, days: 10 },
+    ],
+  },
+  {
+    key: 'PRODUCE|baby-spinach|organic',
+    label: 'Baby spinach — organic',
+    category: 'PRODUCE',
+    attributes: ['organic'],
+    unit: 'OZ',
+    brandBy: { 1: 'Kirkland Signature', 3: 'Simply Nature' },
+    nameBy: { 1: 'KS ORGANIC BABY SPINACH 1LB', 3: 'SIMPLY NATURE SPINACH 5OZ' },
+    offers: [
+      { store: 1, price: 549, size: 16, days: 3 },
+      { store: 3, price: 279, size: 5, days: 5 },
+    ],
+  },
+  {
+    key: 'FROZEN|blueberries|frozen-whole',
+    label: 'Blueberries — frozen',
+    category: 'FROZEN',
+    attributes: ['frozen-whole'],
+    unit: 'OZ',
+    brandBy: { 1: 'Kirkland Signature', 2: 'Member’s Mark' },
+    nameBy: { 1: 'KS FROZEN BLUEBERRIES 3LB', 2: 'MM FROZEN BLUEBERRIES 4LB' },
+    offers: [
+      { store: 1, price: 1099, size: 48, days: 14 },
+      { store: 2, price: 1398, size: 64, days: 22 },
+    ],
+  },
+  {
+    key: 'BEVERAGES|sparkling-water|unsweetened',
+    label: 'Sparkling water — unsweetened',
+    category: 'BEVERAGES',
+    attributes: ['unsweetened'],
+    unit: 'FL_OZ',
+    brandBy: { 1: 'LaCroix', 3: 'Summit' },
+    nameBy: { 1: 'LACROIX 24PK 12OZ', 3: 'SUMMIT SPARKLING 12PK 12OZ' },
+    offers: [
+      { store: 1, price: 1099, regular: 1349, size: 288, signal: 'INSTANT_SAVINGS', days: 7 },
+      { store: 3, price: 349, size: 144, days: 9 },
+    ],
+  },
+  {
     key: 'HOUSEHOLD|dish-soap|plain',
     label: 'Dish soap',
     category: 'HOUSEHOLD',
@@ -200,9 +252,11 @@ function buildOffers(seed: GroupSeed, groupIndex: number): StoreOffer[] {
   offers.sort((a, b) => (a.unitPriceCents ?? 0) - (b.unitPriceCents ?? 0));
   const best = offers[0]?.unitPriceCents ?? 0;
   for (const offer of offers) {
+    // One decimal, because that is what the API returns -- the template prints
+    // this value as-is, so a raw float renders as +19.983312473925743%.
     offer.percentAboveBest =
       best > 0 && offer.unitPriceCents != null
-        ? ((offer.unitPriceCents - best) / best) * 100
+        ? Math.round(((offer.unitPriceCents - best) / best) * 1000) / 10
         : 0;
   }
   return offers;
