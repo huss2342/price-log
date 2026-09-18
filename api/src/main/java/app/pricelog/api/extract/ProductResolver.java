@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ProductResolver {
 
+    private static final int COMMODITY_LENGTH = 128;
+
     private final ProductRepository products;
     private final UnitNormalizer normalizer;
 
@@ -37,12 +39,13 @@ public class ProductResolver {
 
         String displayName = firstNonBlank(tag.itemName(), tag.commodity(), "Unnamed item");
         String normalizedKey = buildNormalizedKey(tag, displayName, size);
-        String comparisonKey = buildComparisonKey(tag, category, attributes);
+        String commodity = normalizeCommodity(firstNonBlank(tag.commodity(), tag.itemName(), category.name()));
 
         return products.findByNormalizedKey(normalizedKey).orElseGet(() -> {
             Product product = new Product();
             product.setNormalizedKey(normalizedKey);
-            product.setComparisonKey(comparisonKey);
+            product.setCommodity(commodity);
+            product.setComparisonKey(comparisonKey(commodity, category, attributes));
             product.setDisplayName(displayName);
             product.setBrand(blankToNull(tag.brand()));
             product.setCategory(category);
@@ -56,16 +59,42 @@ public class ProductResolver {
         });
     }
 
-    /** Recompute the derived fields after a manual correction on the review screen. */
+    /**
+     * Recompute the derived fields after a manual correction.
+     *
+     * <p>The comparison key is rebuilt from the commodity, never the display
+     * name. It used to use the name, so fixing a typo in a brand moved the
+     * product into a group of one and out of every comparison it belonged to.
+     */
     @Transactional
     public Product recompute(Product product) {
         UnitNormalizer.Normalized size = normalizer.normalize(
                 product.getSizeValue(), product.getSizeUnit(), product.getPackCount());
         product.setBaseUnit(size.unit());
         product.setBaseQuantity(size.quantity());
-        product.setComparisonKey(comparisonKey(
-                product.getDisplayName(), product.getCategory(), product.getAttributes()));
+        String commodity = commodityOf(product);
+        product.setCommodity(commodity);
+        product.setComparisonKey(comparisonKey(commodity, product.getCategory(), product.getAttributes()));
         return products.save(product);
+    }
+
+    /**
+     * The stored commodity, or for a product logged before there was a column
+     * for it, the one its comparison key was built from. The key only kept a
+     * slug of it, so "ground beef 80/20" reads back as "ground beef 80 20".
+     */
+    public static String commodityOf(Product product) {
+        if (product.getCommodity() != null && !product.getCommodity().isBlank()) {
+            return product.getCommodity();
+        }
+        String[] parts = product.getComparisonKey() == null ? new String[0] : product.getComparisonKey().split("\\|");
+        return parts.length > 1 ? parts[1].replace('-', ' ') : product.getDisplayName();
+    }
+
+    /** Lowercase and single-spaced, so the same thing typed twice groups once. */
+    public static String normalizeCommodity(String raw) {
+        String clean = raw.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        return clean.length() <= COMMODITY_LENGTH ? clean : clean.substring(0, COMMODITY_LENGTH);
     }
 
     private Set<QualityAttribute> parseAttributes(ExtractedTag tag) {
@@ -91,18 +120,12 @@ public class ProductResolver {
                 sizePart);
     }
 
-    private String buildComparisonKey(ExtractedTag tag, Category category,
-                                      Set<QualityAttribute> attributes) {
-        String basis = firstNonBlank(tag.commodity(), tag.itemName(), category.name());
-        return comparisonKey(basis, category, attributes);
-    }
-
     /**
      * Category, commodity, and quality claims, but never brand or size. This is
      * what "where are organic eggs cheapest" groups on, so conventional eggs
      * must never land in the same bucket as pasture-raised ones.
      */
-    private String comparisonKey(String basis, Category category, Set<QualityAttribute> attributes) {
+    private String comparisonKey(String commodity, Category category, Set<QualityAttribute> attributes) {
         String attributePart = attributes.isEmpty()
                 ? "plain"
                 : attributes.stream()
@@ -110,7 +133,7 @@ public class ProductResolver {
                         .collect(Collectors.toCollection(TreeSet::new))
                         .stream()
                         .collect(Collectors.joining("+"));
-        return String.join("|", category.name(), slug(basis), attributePart);
+        return String.join("|", category.name(), slug(commodity), attributePart);
     }
 
     private String slug(String raw) {

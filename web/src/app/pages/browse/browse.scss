@@ -1,35 +1,19 @@
-.search {
+/* Products that compare with each other share a tray, so the ranking reads as one answer. */
+.group {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.7rem;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
-.search input {
-  flex: 1;
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.9rem;
-}
-
-.chip {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  border-radius: 999px;
-  padding: 0.45rem 0.8rem;
-  font-size: 0.85rem;
+.group-title {
+  margin: 4px 8px 2px;
+  font-size: 0.9rem;
   font-weight: 600;
-  cursor: pointer;
-  min-height: 38px;
 }
 
-.chip.selected {
-  background: var(--accent);
-  color: var(--accent-text);
-  border-color: transparent;
+.group-title .dim {
+  font-weight: 500;
 }

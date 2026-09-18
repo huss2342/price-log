@@ -47,6 +47,25 @@ class TagRuleEngineTest {
     }
 
     @Test
+    void aNinetyNineWithASavingPrintedBesideItIsASaleNotFullPrice() {
+        // $13.99 less $4 is $9.99. The .99 ending alone reads as an everyday
+        // price, which once labelled a live instant saving "full price".
+        var verdict = engine.evaluate(Chain.COSTCO, 999, List.of(), "", true);
+
+        assertThat(verdict.signal()).isEqualTo(SaleSignal.INSTANT_SAVINGS);
+        assertThat(verdict.discounted()).isTrue();
+        assertThat(verdict.matched()).noneMatch(m -> m.contains("standard everyday price"));
+    }
+
+    @Test
+    void aSavingDoesNotHideThatTheItemIsNotRestocking() {
+        var verdict = engine.evaluate(Chain.COSTCO, 999, List.of("ASTERISK"), "", true);
+
+        assertThat(verdict.discontinued()).isTrue();
+        assertThat(verdict.discounted()).isTrue();
+    }
+
+    @Test
     void regularPricedItemIsNotMarkedDiscounted() {
         var verdict = engine.evaluate(Chain.COSTCO, 1299, List.of(), "");
 

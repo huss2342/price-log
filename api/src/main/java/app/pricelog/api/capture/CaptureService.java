@@ -36,6 +36,7 @@ public class CaptureService {
     private final ProductResolver productResolver;
     private final TagRuleEngine ruleEngine;
     private final StoreRepository stores;
+    private final StoreResolver storeResolver;
     private final PriceObservationRepository observations;
     private final PriceHistoryService priceHistory;
     private final ObjectMapper mapper;
@@ -45,6 +46,7 @@ public class CaptureService {
                           ProductResolver productResolver,
                           TagRuleEngine ruleEngine,
                           StoreRepository stores,
+                          StoreResolver storeResolver,
                           PriceObservationRepository observations,
                           PriceHistoryService priceHistory,
                           ObjectMapper mapper) {
@@ -53,21 +55,28 @@ public class CaptureService {
         this.productResolver = productResolver;
         this.ruleEngine = ruleEngine;
         this.stores = stores;
+        this.storeResolver = storeResolver;
         this.observations = observations;
         this.priceHistory = priceHistory;
         this.mapper = mapper;
     }
 
+    /**
+     * @param chain   the chain the shopper picked, or null to read it off the tag
+     * @param storeId the older way of picking, used only when chain is null
+     */
     @Transactional
     public CaptureResult capture(byte[] imageBytes,
                                  String contentType,
+                                 Chain chain,
                                  Long storeId,
                                  LocalDate observedOn) {
 
-        Store store = storeId == null ? null : stores.findById(storeId).orElse(null);
-        String chainHint = store == null ? null : store.getChain().name();
+        Chain picked = chain != null || storeId == null
+                ? chain
+                : stores.findById(storeId).map(Store::getChain).orElse(null);
 
-        ExtractedTag tag = extractor.extract(imageBytes, contentType, chainHint);
+        ExtractedTag tag = extractor.extract(imageBytes, contentType, picked == null ? null : picked.name());
 
         if (Boolean.FALSE.equals(tag.readable()) || tag.price() == null) {
             throw new UnreadableTagException(
@@ -80,17 +89,19 @@ public class CaptureService {
         // strand the file with no row pointing at it. Undo it on rollback.
         deletePhotoIfRolledBack(photoKey);
 
-        if (store == null) {
-            store = resolveStoreFromTag(tag);
-        }
+        Store store = storeResolver.forChain(
+                picked != null ? picked : Enums.parseOr(Chain.class, tag.storeChain(), Chain.OTHER));
 
         Product product = productResolver.resolve(tag);
 
         int priceCents = toCents(tag.price());
         Integer regularCents = regularPriceCents(tag, priceCents);
+        boolean tagShowsSaving = regularCents != null
+                || Boolean.TRUE.equals(tag.onSale())
+                || (tag.savingsAmount() != null && tag.savingsAmount().signum() > 0);
 
         TagVerdict verdict = ruleEngine.evaluate(
-                store.getChain(), priceCents, tag.markersOrEmpty(), tag.rawText());
+                store.getChain(), priceCents, tag.markersOrEmpty(), tag.rawText(), tagShowsSaving);
 
         PriceObservation observation = new PriceObservation();
         observation.setProduct(product);
@@ -98,7 +109,7 @@ public class CaptureService {
         observation.setObservedOn(observedOn == null ? LocalDate.now() : observedOn);
         observation.setPriceCents(priceCents);
         observation.setRegularPriceCents(regularCents);
-        observation.setOnSale(isOnSale(tag, regularCents, verdict));
+        observation.setOnSale(tagShowsSaving || verdict.discounted());
         observation.setSaleSignal(verdict.signal());
         observation.setSaleEndsOn(parseDate(tag.saleEndsOn()));
         observation.setDiscontinued(verdict.discontinued());
@@ -120,43 +131,16 @@ public class CaptureService {
         return new CaptureResult(observation, verdict, tag);
     }
 
-    /**
-     * No store was picked, so fall back to a chain-level placeholder. The tag
-     * conventions only depend on the chain, so this still produces the right
-     * reading; the user can attach a real location on the review screen.
-     */
-    private Store resolveStoreFromTag(ExtractedTag tag) {
-        Chain chain = Enums.parseOr(Chain.class, tag.storeChain(), Chain.OTHER);
-        String label = defaultLabelFor(chain);
-        return stores.findByChainAndLabel(chain, label)
-                .orElseGet(() -> stores.save(new Store(chain, label, null, null)));
-    }
-
-    private String defaultLabelFor(Chain chain) {
-        return switch (chain) {
-            case COSTCO -> "Costco (unspecified)";
-            case SAMS_CLUB -> "Sam's Club (unspecified)";
-            case ALDI -> "Aldi (unspecified)";
-            case WALMART -> "Walmart (unspecified)";
-            case OTHER -> "Unknown store";
-        };
-    }
-
+    /** The price before the saving, when the tag shows one that is actually higher. */
     private Integer regularPriceCents(ExtractedTag tag, int priceCents) {
+        Integer regular = null;
         if (tag.regularPrice() != null) {
-            return toCents(tag.regularPrice());
+            regular = toCents(tag.regularPrice());
+        } else if (tag.savingsAmount() != null && tag.savingsAmount().signum() > 0) {
+            // Tag stated a savings amount but not the original price; reconstruct it.
+            regular = priceCents + toCents(tag.savingsAmount());
         }
-        // Tag stated a savings amount but not the original price; reconstruct it.
-        if (tag.savingsAmount() != null && tag.savingsAmount().signum() > 0) {
-            return priceCents + toCents(tag.savingsAmount());
-        }
-        return null;
-    }
-
-    private boolean isOnSale(ExtractedTag tag, Integer regularCents, TagVerdict verdict) {
-        return Boolean.TRUE.equals(tag.onSale())
-                || regularCents != null
-                || verdict.discounted();
+        return regular != null && regular > priceCents ? regular : null;
     }
 
     /** Anything the model was unsure of, or could not size, gets a human look. */

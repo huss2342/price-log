@@ -1,69 +1,35 @@
-.ok {
-  background: var(--good-bg);
-  color: var(--good);
-  font-weight: 600;
-}
-
-.plain {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+summary {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+  justify-content: space-between;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
 }
 
-.block {
-  display: block;
+summary::-webkit-details-marker {
+  display: none;
 }
 
-.grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
+.rules {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
 }
 
 .rules li {
-  background: var(--surface-2);
-  border-radius: var(--radius-sm);
-  padding: 0.55rem 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  border-top: 0.5px solid var(--line);
+  font-size: 0.9rem;
 }
 
 .rules li.off {
   opacity: 0.5;
 }
 
-.rules code {
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.tiny-btn {
+.notice .btn {
   min-height: 32px;
-  padding: 0.2rem 0.7rem;
-  font-size: 0.78rem;
-}
-
-.no-margin {
-  margin: 0.2rem 0 0;
-}
-
-summary {
-  cursor: pointer;
-  font-weight: 600;
-  padding: 0.35rem 0;
-}
-
-details {
-  border-top: 1px solid var(--border);
-  padding-top: 0.35rem;
-}
-
-.store {
-  background: var(--surface-2);
-  border-radius: var(--radius-sm);
-  padding: 0.6rem 0.7rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
 }

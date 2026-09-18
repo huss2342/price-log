@@ -10,7 +10,7 @@
   "properties": {
     "itemName": {
       "type": ["string", "null"],
-      "description": "Product name as printed, expanded from retailer abbreviations where obvious (KS -> Kirkland Signature, ORG -> Organic, CHKN -> Chicken)."
+      "description": "Product name as printed, expanded from retailer abbreviations where obvious (KS -> Kirkland Signature, ORG -> Organic, CHKN -> Chicken). Without the size or pack count, which have their own fields."
     },
     "brand": {
       "type": ["string", "null"],
@@ -18,7 +18,7 @@
     },
     "commodity": {
       "type": "string",
-      "description": "Generic name for what this item IS, with no brand, no size, and no quality claims. Two products that a shopper would consider substitutes must produce the same string. Lowercase, singular where natural. Examples: 'large eggs', 'ground beef 80/20', 'ribeye steak', 'whole milk', 'olive oil', 'paper towels', 'boneless skinless chicken breast'. Be specific enough that the comparison is fair: ribeye is not ground beef."
+      "description": "Generic name for what this item IS, with no brand, no size, and no quality claims. Two products that a shopper would consider substitutes must produce the same string. Lowercase, singular where natural. Examples: 'large eggs', 'ground beef 80/20', 'ribeye steak', 'whole milk', 'olive oil', 'paper towels', 'boneless skinless chicken breast', 'chicken sausage'. Drop flavour and style words (andouille, italian, spicy) but keep the main ingredient: chicken sausage is not pork sausage, and ribeye is not ground beef."
     },
     "category": {
       "type": "string",
@@ -59,7 +59,7 @@
     },
     "saleEndsOn": {
       "type": ["string", "null"],
-      "description": "Last day of the promotion as YYYY-MM-DD when the tag prints a date range. Null otherwise."
+      "description": "Last day of the promotion as YYYY-MM-DD when the tag prints a date range or end date. A date printed without a year takes the year of today's date from the request. Null otherwise."
     },
     "printedUnitPrice": {
       "type": ["number", "null"],

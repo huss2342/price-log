@@ -28,4 +28,10 @@ public record TagVerdict(
         return new TagVerdict(SaleSignal.UNKNOWN, "No known tag convention matched this price.",
                 null, false, false, List.of());
     }
+
+    /** The tag printed a saving, and no convention says anything more specific. */
+    public static TagVerdict savings() {
+        String meaning = "The tag shows a saving off the regular price.";
+        return new TagVerdict(SaleSignal.INSTANT_SAVINGS, meaning, null, false, true, List.of(meaning));
+    }
 }

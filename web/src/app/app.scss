@@ -3,52 +3,49 @@
   left: 0;
   right: 0;
   bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  /* Keeps the bar clear of the iOS home indicator. */
-  padding-bottom: env(safe-area-inset-bottom);
   z-index: 10;
+  display: flex;
+  justify-content: space-around;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid var(--line);
 }
 
 .tabs a {
+  flex: 1;
+  max-width: 110px;
+  height: var(--nav-height);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
-  height: var(--nav-height);
-  text-decoration: none;
-  color: var(--text-dim);
-  font-size: 0.72rem;
+  gap: 2px;
+  color: var(--text-3);
+  font-size: 0.68rem;
   font-weight: 600;
+  text-decoration: none;
 }
 
 .tabs a.active {
   color: var(--accent);
 }
 
-.glyph {
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-/* Deliberately unmissable but not alarming: a visitor should register that the
-   numbers are invented without the page looking broken. */
+/* Unmissable but quiet: a visitor should register that the numbers are
+   invented without the page looking broken. */
 .demo-banner {
   margin: 0;
-  padding: 0.45rem 0.9rem;
-  font-size: 0.82rem;
+  padding: calc(env(safe-area-inset-top) + 6px) 16px 6px;
   text-align: center;
-  background: var(--surface-2, #eef2f7);
-  color: var(--text);
-  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-2);
+  background: var(--muted-bg);
 }
 
 .demo-banner strong {
-  letter-spacing: 0.04em;
+  margin-right: 4px;
   text-transform: uppercase;
-  font-size: 0.74rem;
-  margin-right: 0.25rem;
+  letter-spacing: 0.05em;
+  color: var(--text);
 }

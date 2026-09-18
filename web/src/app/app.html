@@ -1,36 +1,16 @@
 @if (demo) {
   <!-- Said plainly rather than implied. The numbers are invented, and a visitor
        is entitled to know that before reading any of them as advice. -->
-  <p class="demo-banner">
-    <strong>Demo</strong> — sample data, not real prices.
-  </p>
+  <p class="demo-banner"><strong>Demo</strong> sample prices, not real ones</p>
 }
 
 <router-outlet />
 
 <nav class="tabs" aria-label="Main">
-  @if (settings.canWrite()) {
-    <a routerLink="/capture" routerLinkActive="active" ariaCurrentWhenActive="page">
-      <span class="glyph" aria-hidden="true">◉</span>
-      <span>Snap</span>
+  @for (tab of tabs(); track tab.path) {
+    <a [routerLink]="tab.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+      <app-icon [name]="tab.icon" [size]="24" />
+      <span>{{ tab.label }}</span>
     </a>
   }
-  <a routerLink="/browse" routerLinkActive="active" ariaCurrentWhenActive="page">
-    <span class="glyph" aria-hidden="true">⌕</span>
-    <span>Browse</span>
-  </a>
-  <a routerLink="/deals" routerLinkActive="active" ariaCurrentWhenActive="page">
-    <span class="glyph" aria-hidden="true">★</span>
-    <span>Deals</span>
-  </a>
-  @if (settings.canWrite()) {
-    <a routerLink="/review" routerLinkActive="active" ariaCurrentWhenActive="page">
-      <span class="glyph" aria-hidden="true">✓</span>
-      <span>Review</span>
-    </a>
-  }
-  <a routerLink="/settings" routerLinkActive="active" ariaCurrentWhenActive="page">
-    <span class="glyph" aria-hidden="true">⚙</span>
-    <span>Settings</span>
-  </a>
 </nav>

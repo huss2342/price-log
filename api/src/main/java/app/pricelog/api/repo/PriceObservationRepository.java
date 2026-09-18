@@ -57,4 +57,12 @@ public interface PriceObservationRepository extends JpaRepository<PriceObservati
             order by o.observedOn desc, o.id desc
             """)
     List<PriceObservation> findRecent(org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            select o from PriceObservation o
+            join fetch o.product p
+            join fetch o.store s
+            order by o.observedOn desc, o.id desc
+            """)
+    List<PriceObservation> findAllNewestFirst();
 }

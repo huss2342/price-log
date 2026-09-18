@@ -1,7 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { Api } from './api';
-import type { Observation } from './models';
+import { LogStore } from './log-store';
+import type { Chain, Observation } from './models';
 
 const DB_NAME = 'pricelog-outbox';
 const STORE = 'captures';
@@ -10,7 +11,7 @@ export interface PendingCapture {
   id: number;
   blob: Blob;
   filename: string;
-  storeId: number | null;
+  chain?: Chain | null;
   queuedAt: number;
   attempts: number;
   lastError?: string;
@@ -20,16 +21,23 @@ export interface PendingCapture {
  * Captures are queued to IndexedDB before they are uploaded, so a photo taken
  * inside a warehouse with no signal is never lost. The queue drains whenever
  * the browser reports it is back online.
+ *
+ * <p>Results go straight into the log on the device rather than back to
+ * whichever screen started the upload, so a tag read while you are on another
+ * tab is still there when you come back.
  */
 @Injectable({ providedIn: 'root' })
 export class Outbox {
   private readonly api = inject(Api);
+  private readonly log = inject(LogStore);
   private db?: IDBDatabase;
 
   /** Number of captures still waiting to upload. */
   readonly pendingCount = signal(0);
   readonly uploading = signal(false);
   readonly online = signal(navigator.onLine);
+  /** Photos the API refused, with its reason, until dismissed. */
+  readonly failures = signal<string[]>([]);
 
   constructor() {
     addEventListener('online', () => {
@@ -39,10 +47,10 @@ export class Outbox {
     addEventListener('offline', () => this.online.set(false));
   }
 
-  async enqueue(blob: Blob, filename: string, storeId: number | null): Promise<void> {
+  async enqueue(blob: Blob, filename: string, chain: Chain | null): Promise<void> {
     const db = await this.open();
     await this.tx(db, 'readwrite', (store) =>
-      store.add({ blob, filename, storeId, queuedAt: Date.now(), attempts: 0 }),
+      store.add({ blob, filename, chain, queuedAt: Date.now(), attempts: 0 }),
     );
     await this.refreshCount();
   }
@@ -59,19 +67,20 @@ export class Outbox {
    *
    * @returns the observations that were successfully created
    */
-  async flush(): Promise<{ saved: Observation[]; failed: PendingCapture[] }> {
+  async flush(): Promise<Observation[]> {
     if (this.uploading() || !navigator.onLine) {
-      return { saved: [], failed: [] };
+      return [];
     }
     this.uploading.set(true);
     const saved: Observation[] = [];
-    const failed: PendingCapture[] = [];
 
     try {
       for (const item of await this.list()) {
         try {
           const file = new File([item.blob], item.filename, { type: item.blob.type });
-          saved.push(await firstValueFrom(this.api.capture(file, item.storeId)));
+          const observation = await firstValueFrom(this.api.capture(file, item.chain ?? null));
+          saved.push(observation);
+          this.log.upsert(observation);
           await this.remove(item.id);
         } catch (error: unknown) {
           const status = (error as { status?: number })?.status ?? 0;
@@ -79,7 +88,7 @@ export class Outbox {
             // Genuinely offline or the API is unreachable; keep it for later.
             break;
           }
-          failed.push({ ...item, lastError: this.message(error) });
+          this.failures.update((current) => [this.message(error), ...current]);
           await this.remove(item.id);
         }
       }
@@ -88,7 +97,11 @@ export class Outbox {
       await this.refreshCount();
     }
 
-    return { saved, failed };
+    return saved;
+  }
+
+  dismissFailures(): void {
+    this.failures.set([]);
   }
 
   async remove(id: number): Promise<void> {

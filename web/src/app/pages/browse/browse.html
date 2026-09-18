@@ -1,49 +1,73 @@
 <main class="page">
-  <h1>Browse prices</h1>
-
-  <div class="search">
-    <input
-      type="search"
-      placeholder="eggs, ribeye, olive oil…"
-      aria-label="Search logged items"
-      [ngModel]="query()"
-      (ngModelChange)="onQuery($event)"
-    />
-    @if (query() || activeCategory()) {
-      <button class="btn" (click)="clear()">Clear</button>
+  <header class="page-head">
+    <h1>Browse</h1>
+    @if (log.syncing()) {
+      <span class="small dim">Updating…</span>
     }
-  </div>
+  </header>
 
-  <div class="chips">
-    @for (category of categories; track category) {
-      <button
-        class="chip"
-        [class.selected]="activeCategory() === category"
-        [attr.aria-pressed]="activeCategory() === category"
-        (click)="pickCategory(category)"
-      >
-        {{ label(category) }}
-      </button>
+  @if (log.products().length) {
+    <div class="search">
+      <app-icon name="search" [size]="18" />
+      <input
+        type="search"
+        placeholder="Search your items"
+        aria-label="Search your items"
+        [value]="query()"
+        (input)="search($event)"
+      />
+    </div>
+
+    @if (categories().length > 1) {
+      <div class="pills" role="group" aria-label="Category">
+        <button class="pill" [attr.aria-pressed]="category() === null" (click)="category.set(null)">
+          All
+        </button>
+        @for (c of categories(); track c.category) {
+          <button
+            class="pill"
+            [attr.aria-pressed]="category() === c.category"
+            (click)="toggle(c.category)"
+          >
+            {{ c.label }}<span class="count">{{ c.count }}</span>
+          </button>
+        }
+      </div>
     }
-  </div>
-
-  @if (error(); as message) {
-    <div class="error">{{ message }}</div>
   }
 
-  @if (loading()) {
-    <div class="card dim">Looking…</div>
-  } @else if (groups().length) {
-    @for (group of groups(); track group.comparisonKey) {
-      <app-group-card [group]="group" [compact]="true" />
+  @if (log.syncError() && !log.products().length) {
+    <p class="notice notice-error">{{ log.syncError() }}</p>
+  }
+
+  @for (section of sections(); track section.category) {
+    <h2 class="section-title">{{ section.label }}</h2>
+    <div class="list">
+      @for (group of section.groups; track group.key) {
+        @if (group.title) {
+          <section class="group" [attr.aria-label]="group.title">
+            <h3 class="group-title">
+              {{ group.title }}<span class="dim"> · {{ group.cards.length }} compared per unit</span>
+            </h3>
+            @for (card of group.cards; track card.productId) {
+              <app-item-card [card]="card" />
+            }
+          </section>
+        } @else {
+          <app-item-card [card]="group.cards[0]" />
+        }
+      }
+    </div>
+  } @empty {
+    @if (!log.loaded()) {
+      <p class="empty">Loading…</p>
+    } @else if (log.products().length) {
+      <p class="empty">Nothing matches that.</p>
+    } @else if (!log.syncError()) {
+      <p class="empty">
+        <strong>Nothing logged yet</strong>
+        Snap a price tag and it shows up here.
+      </p>
     }
-  } @else if (searched()) {
-    <div class="card dim">
-      Nothing logged for that yet. Snap a tag next time you see one.
-    </div>
-  } @else {
-    <div class="card dim">
-      Search an item, or pick a category, to see where it was cheapest.
-    </div>
   }
 </main>

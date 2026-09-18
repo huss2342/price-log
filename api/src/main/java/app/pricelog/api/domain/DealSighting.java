@@ -44,6 +44,10 @@ public class DealSighting {
     @Column(name = "last_seen_on", nullable = false)
     private LocalDate lastSeenOn;
 
+    /** Last day of the promotion, when the listing states one. */
+    @Column(name = "valid_until")
+    private LocalDate validUntil;
+
     /** Cleared when a refresh no longer finds the offer. */
     @Column(nullable = false)
     private boolean active = true;
@@ -122,6 +126,14 @@ public class DealSighting {
 
     public void setLastSeenOn(LocalDate lastSeenOn) {
         this.lastSeenOn = lastSeenOn;
+    }
+
+    public LocalDate getValidUntil() {
+        return validUntil;
+    }
+
+    public void setValidUntil(LocalDate validUntil) {
+        this.validUntil = validUntil;
     }
 
     public boolean isActive() {

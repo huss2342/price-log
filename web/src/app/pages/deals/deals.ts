@@ -1,77 +1,47 @@
-import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { Api } from '../../core/api';
+import { Component, OnInit, computed, inject } from '@angular/core';
+import { LogStore } from '../../core/log-store';
 import { Settings } from '../../core/settings';
-import type { DealsView, WatchedItem } from '../../core/models';
-import { AgoPipe, MoneyPipe } from '../../shared/format';
+import { dealCard } from '../../shared/cards';
+import { Icon } from '../../shared/icon';
+import { ItemCard } from '../../shared/item-card';
 
+/**
+ * Only what has been bought before and is cheaper right now: sales still running
+ * on tags you photographed, and Costco's published offers on the same item
+ * numbers. Costco's full listing of massage chairs and gazebos is not here.
+ */
 @Component({
   selector: 'app-deals',
-  imports: [MoneyPipe, AgoPipe, DatePipe, RouterLink],
+  imports: [ItemCard, Icon],
   templateUrl: './deals.html',
-  styleUrl: './deals.scss',
 })
 export class DealsPage implements OnInit {
-  private readonly api = inject(Api);
+  protected readonly log = inject(LogStore);
   protected readonly settings = inject(Settings);
 
-  protected readonly deals = signal<DealsView | null>(null);
-  protected readonly watchlist = signal<WatchedItem[]>([]);
-  protected readonly loading = signal(true);
-  protected readonly error = signal<string | null>(null);
+  protected readonly cards = computed(() => {
+    const ctx = { today: this.log.today(), showChain: this.log.multiChain() };
+    return this.log.deals().map((deal) => dealCard(deal, ctx));
+  });
+
+  /** "Costco checked 3 h ago", so a quiet list is not mistaken for a broken one. */
+  protected readonly checked = computed(() => {
+    const at = this.log.dealsView()?.lastCheckedAt;
+    if (!at) return null;
+    const minutes = Math.round((Date.now() - Date.parse(at)) / 60_000);
+    if (minutes < 2) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.round(minutes / 60);
+    return hours < 36 ? `${hours} h ago` : `${Math.round(hours / 24)} days ago`;
+  });
 
   ngOnInit(): void {
-    this.load(false);
-    this.loadWatchlist();
+    void this.log.refresh();
+    void this.log.refreshDeals();
   }
 
-  /** @param force re-read Costco's listing rather than using the cached copy */
-  protected load(force: boolean): void {
-    this.loading.set(true);
-    this.error.set(null);
-    this.api.deals(force).subscribe({
-      next: (view) => {
-        this.deals.set(view);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.error.set(
-          err?.status === 0
-            ? 'Cannot reach the API. Check the address in Settings.'
-            : (err?.error?.error ?? 'Could not load deals.'),
-        );
-      },
-    });
-  }
-
-  private loadWatchlist(): void {
-    this.api.watchlist().subscribe({
-      next: (items) => this.watchlist.set(items),
-      error: () => this.watchlist.set([]),
-    });
-  }
-
-  protected unwatch(item: WatchedItem): void {
-    this.api.setWatch(item.productId, { watched: false }).subscribe({
-      next: () => this.watchlist.update((rows) => rows.filter((r) => r.productId !== item.productId)),
-      error: (err) => this.error.set(err?.error?.error ?? 'Could not update the watchlist.'),
-    });
-  }
-
-  /** Plain-language summary of an item's sale rhythm. */
-  protected cycleSummary(item: WatchedItem): string | null {
-    const c = item.cycle;
-    if (!c.salesSeen) return 'No sale recorded yet.';
-    if (!c.averageGapDays) {
-      return `Seen on sale once, ${c.daysSinceLastSale} days ago. Needs another to find a pattern.`;
-    }
-
-    const basis = c.confident ? '' : ' (only a rough guess so far)';
-    if (c.dueInDays !== null && c.dueInDays <= 0) {
-      return `Goes on sale about every ${c.averageGapDays} days, and it has been ${c.daysSinceLastSale}. Overdue${basis}.`;
-    }
-    return `Goes on sale about every ${c.averageGapDays} days. Next one due in roughly ${c.dueInDays} days${basis}.`;
+  /** Re-reads Costco's page itself. It spends a scrape, so only the owner is offered it. */
+  protected check(): void {
+    void this.log.refreshDeals(true);
   }
 }

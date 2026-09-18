@@ -21,6 +21,16 @@ public class ObservationController {
         return observations.pendingReview().stream().map(ObservationView::of).toList();
     }
 
+    /**
+     * Everything, so the app can keep the log on the device and browse it with
+     * no round trip. A scale-to-zero API makes any per-screen request a potential
+     * thirty-second wait.
+     */
+    @GetMapping
+    public List<ObservationView> all() {
+        return observations.all().stream().map(ObservationView::of).toList();
+    }
+
     @GetMapping("/recent")
     public List<ObservationView> recent(@RequestParam(defaultValue = "50") int limit) {
         return observations.recent(Math.clamp(limit, 1, 500)).stream()

@@ -1,99 +1,51 @@
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.chip {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  border-radius: 999px;
-  padding: 0.5rem 0.85rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  min-height: 40px;
-}
-
-.chip.selected {
-  background: var(--accent);
-  color: var(--accent-text);
-  border-color: transparent;
-}
-
-/* The primary action, sized so it can be hit without looking at the screen. */
+/* The primary action, big enough to hit without looking at the screen. */
 .shutter {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
+  gap: 8px;
+  min-height: 150px;
+  margin-top: 12px;
+  border-radius: 22px;
   background: var(--accent);
   color: var(--accent-text);
-  border-radius: var(--radius);
-  padding: 1.6rem 1rem;
-  margin-bottom: 0.85rem;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-  text-align: center;
-}
-
-.shutter:active {
-  transform: translateY(1px);
-}
-
-.lens {
-  font-size: 2.6rem;
-  line-height: 1;
-}
-
-.shutter-text {
   font-size: 1.1rem;
-  font-weight: 800;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.shutter .tiny {
-  opacity: 0.85;
+.shutter:active,
+.library:active {
+  opacity: 0.8;
 }
 
-/* Secondary on purpose: shooting in the aisle stays the primary path. But
-   without this, a roll of tags photographed earlier cannot be logged at all,
-   because capture="environment" hides the library picker. */
-.from-library {
+.library {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.85rem;
-  border: 1px solid var(--border);
+  gap: 8px;
+  min-height: 48px;
+  margin: 8px 0 0;
   border-radius: var(--radius);
   background: var(--surface);
-  color: var(--text);
+  color: var(--accent);
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  text-align: center;
 }
 
-.from-library:active {
-  transform: translateY(1px);
-}
-
-.lens-small {
-  font-size: 1.1rem;
-  line-height: 1;
-}
-
-.queued {
+.status {
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  min-height: 44px;
+  padding-block: 4px;
 }
 
-.no-margin {
-  margin: 0;
+.status .btn {
+  min-height: 36px;
+  color: inherit;
 }

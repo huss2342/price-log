@@ -11,7 +11,6 @@ import app.pricelog.api.domain.SaleSignal;
 import app.pricelog.api.domain.Store;
 import app.pricelog.api.repo.PriceObservationRepository;
 import app.pricelog.api.repo.ProductRepository;
-import app.pricelog.api.repo.StoreRepository;
 import app.pricelog.api.storage.PhotoStore;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,7 +38,7 @@ class ObservationDeleteTest {
     ProductRepository products;
 
     @Autowired
-    StoreRepository stores;
+    StoreResolver stores;
 
     @Autowired
     PhotoStore photos;
@@ -69,7 +68,7 @@ class ObservationDeleteTest {
     }
 
     private PriceObservation observationOn(String photoKey, String suffix) {
-        Store store = stores.save(new Store(Chain.COSTCO, "Test warehouse " + suffix, null, null));
+        Store store = stores.forChain(Chain.COSTCO);
 
         Product product = new Product();
         product.setDisplayName("TEST ITEM");

@@ -1,6 +1,7 @@
 package app.pricelog.api.web;
 
 import app.pricelog.api.domain.*;
+import app.pricelog.api.extract.ProductResolver;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -14,6 +15,10 @@ public record ObservationView(
         String productName,
         String brand,
         Category category,
+        /** Products sharing this are compared with each other. */
+        String comparisonKey,
+        /** What the item is, without brand or size: "chicken sausage". */
+        String commodity,
         Set<QualityAttribute> attributes,
         BigDecimal sizeValue,
         String sizeUnit,
@@ -76,7 +81,7 @@ public record ObservationView(
 
         return new ObservationView(
                 o.getId(), p.getId(), p.getDisplayName(), p.getBrand(), p.getCategory(),
-                p.getAttributes(), p.getSizeValue(), p.getSizeUnit(), p.getPackCount(),
+                p.getComparisonKey(), ProductResolver.commodityOf(p), p.getAttributes(), p.getSizeValue(), p.getSizeUnit(), p.getPackCount(),
                 p.getBaseUnit(), p.getBaseQuantity(),
                 s.getId(), s.getChain(), s.getLabel(),
                 o.getObservedOn(), o.getPriceCents(), o.getRegularPriceCents(), o.isOnSale(),

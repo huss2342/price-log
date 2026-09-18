@@ -1,127 +1,40 @@
 <main class="page">
-  <h1>On sale now</h1>
+  <header class="page-head">
+    <h1>Deals</h1>
+    @if (settings.canWrite()) {
+      <button class="btn btn-quiet" [disabled]="log.checkingDeals()" (click)="check()">
+        <app-icon name="refresh" [size]="18" />
+        {{ log.checkingDeals() ? 'Checking…' : 'Check' }}
+      </button>
+    }
+  </header>
 
-  @if (error(); as message) {
-    <div class="error">{{ message }}</div>
+  <p class="small dim">
+    Things you've bought that are cheaper right now.
+    @if (checked(); as when) {
+      Costco checked {{ when }}.
+    }
+  </p>
+
+  @if (log.dealsView()?.error) {
+    <p class="notice">Costco's page could not be read just now, so its offers may be out of date.</p>
+  }
+  @if (log.dealsError(); as message) {
+    <p class="notice notice-error">{{ message }}</p>
   }
 
-  @if (deals(); as view) {
-    <div class="card row-between">
-      <span class="tiny dim">
-        @if (view.lastCheckedAt) {
-          Costco listed
-          <a routerLink="/deals/published">{{ view.totalDeals }} offers</a>, checked
-          {{ view.lastCheckedAt | date: 'short' }}
-        } @else {
-          Costco's list has not been read yet
-        }
-      </span>
-      @if (settings.canWrite()) {
-        <!-- Forcing a refresh scrapes Costco on the owner's behalf, so it is
-             not offered to a visitor. -->
-        <button class="btn tiny-btn" [disabled]="loading()" (click)="load(true)">
-          {{ loading() ? 'Checking…' : 'Check now' }}
-        </button>
+  <div class="list">
+    @for (card of cards(); track card.productId) {
+      <app-item-card [card]="card" />
+    } @empty {
+      @if (log.loaded() && !log.checkingDeals()) {
+        <p class="empty">
+          <strong>Nothing on sale</strong>
+          None of the things you've bought are discounted right now.
+        </p>
+      } @else {
+        <p class="empty">Checking…</p>
       }
-    </div>
-
-    @if (view.error) {
-      <div class="card warn-box tiny">
-        Costco's page could not be read, so this list may be out of date.
-        <span class="dim">{{ view.error }}</span>
-      </div>
     }
-
-    @if (view.matches.length) {
-      <p class="tiny dim">
-        Matched by Costco's item number against tags you've photographed, so these are
-        the same product, not a name that merely looks similar.
-      </p>
-      @for (match of view.matches; track match.itemNumber + match.dealTitle) {
-        <article class="card deal">
-          <div class="row-between">
-            <div class="left">
-              <strong>{{ match.productName }}</strong>
-              <span class="tiny dim">{{ match.dealTitle }}</span>
-              <span class="tiny dim">
-                item {{ match.itemNumber }} · you last saw it {{ match.daysSinceSeen | ago }}
-              </span>
-            </div>
-            <div class="right">
-              @if (match.salePriceCents !== null) {
-                <span class="off">{{ match.salePriceCents | money }}</span>
-                @if (match.discountCents) {
-                  <span class="tiny saving">{{ match.discountCents | money }} off</span>
-                }
-              } @else if (match.impliedPriceCents !== null) {
-                <span class="off">~{{ match.impliedPriceCents | money }}</span>
-                <span class="tiny dim">estimated</span>
-              }
-              @if (match.lastPriceCents !== null) {
-                <span class="tiny dim">you paid {{ match.lastPriceCents | money }}</span>
-              }
-            </div>
-          </div>
-          <div class="row wrap">
-            @if (match.watched) {
-              <span class="badge badge-warn">★ watching</span>
-            }
-            @if (match.inWarehouse) {
-              <span class="badge badge-good">valid in warehouse</span>
-            } @else {
-              <span class="badge badge-neutral">online only</span>
-            }
-          </div>
-        </article>
-      }
-    } @else if (!loading()) {
-      <div class="card dim">
-        Nothing you've logged is on Costco's current savings list. The more tags you
-        photograph, the more this catches.
-      </div>
-    }
-  } @else if (loading()) {
-    <div class="card dim">Checking Costco…</div>
-  }
-
-  <h2>Watching</h2>
-  @if (watchlist().length) {
-    @for (item of watchlist(); track item.productId) {
-      <article class="card deal">
-        <div class="row-between">
-          <div class="left">
-            <strong>{{ item.productName }}</strong>
-            <span class="tiny dim">
-              last {{ item.lastPriceCents | money }} · best ever {{ item.bestPriceCents | money }}
-              · seen {{ item.daysSinceSeen | ago }}
-            </span>
-          </div>
-          @if (settings.canWrite()) {
-            <button class="btn tiny-btn" (click)="unwatch(item)">★</button>
-          }
-        </div>
-
-        <div class="row wrap">
-          @if (item.dueForSale) {
-            <span class="badge badge-warn">due for a sale</span>
-          }
-          @if (item.meetsTarget) {
-            <span class="badge badge-good">at your target</span>
-          }
-          @if (item.targetPriceCents) {
-            <span class="badge badge-neutral">target {{ item.targetPriceCents | money }}</span>
-          }
-        </div>
-
-        @if (cycleSummary(item); as summary) {
-          <p class="tiny dim no-margin">{{ summary }}</p>
-        }
-      </article>
-    }
-  } @else {
-    <div class="card dim">
-      Nothing on the watchlist. Tap <strong>☆ Watch</strong> on any logged price to track
-      how often it goes on sale.
-    </div>
-  }
+  </div>
 </main>

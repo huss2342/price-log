@@ -1,105 +1,72 @@
 <main class="page">
-  <h1>Snap a tag</h1>
+  <header class="page-head">
+    <h1>Snap</h1>
+  </header>
 
-  @if (loadError(); as message) {
-    <div class="error">
-      {{ message }}
-      <a routerLink="/settings">Open settings</a>
-    </div>
-  }
-
-  <section class="card">
-    <label id="store-label">Where are you shopping?</label>
-    <div class="chips" role="group" aria-labelledby="store-label">
-      @for (store of stores(); track store.id) {
-        <button
-          class="chip"
-          [class.selected]="storeId() === store.id"
-          [attr.aria-pressed]="storeId() === store.id"
-          (click)="pickStore(store.id)"
-        >
-          {{ store.label }}
-        </button>
-      }
-      <button
-        class="chip"
-        [class.selected]="storeId() === null"
-        [attr.aria-pressed]="storeId() === null"
-        (click)="pickStore(null)"
-      >
-        Let the tag decide
+  <div class="pills" role="group" aria-label="Store">
+    <button class="pill" [attr.aria-pressed]="settings.chain() === null" (click)="pick(null)">
+      Auto
+    </button>
+    @for (chain of chains; track chain) {
+      <button class="pill" [attr.aria-pressed]="settings.chain() === chain" (click)="pick(chain)">
+        {{ chainLabels[chain] }}
       </button>
-    </div>
-    @if (!stores().length && !loadError()) {
-      <p class="tiny dim">
-        No stores saved yet. Captures still work — the tag design tells us the chain.
-        <a routerLink="/settings">Add your warehouses</a> to compare specific locations.
-      </p>
     }
-  </section>
+  </div>
 
   <label class="shutter">
     <!-- capture="environment" opens the camera straight away, which is what you
-         want in the aisle. It also suppresses the photo library, so the picker
-         below exists for tags photographed earlier. -->
-    <input
-      type="file"
-      accept="image/*"
-      capture="environment"
-      multiple
-      (change)="onFiles($event)"
-      hidden
-    />
-    <span class="lens" aria-hidden="true">◉</span>
-    <span class="shutter-text">Photograph a price tag</span>
-    <span class="tiny">Take several — they upload in the background</span>
+         want in the aisle. It also hides the photo library, hence the second picker. -->
+    <input type="file" accept="image/*" capture="environment" multiple (change)="onFiles($event)" hidden />
+    <app-icon name="camera" [size]="36" />
+    <span>Snap a price tag</span>
   </label>
 
-  <label class="from-library">
+  <label class="library">
     <input type="file" accept="image/*" multiple (change)="onFiles($event)" hidden />
-    <span class="lens-small" aria-hidden="true">⬆</span>
-    <span>Upload photos you already took</span>
+    <app-icon name="upload" [size]="18" />
+    <span>Upload from photos</span>
   </label>
 
   @if (outbox.pendingCount() > 0) {
-    <div class="card queued">
-      <div class="row-between">
-        <span>
-          <strong>{{ outbox.pendingCount() }}</strong> waiting to upload
-          @if (!outbox.online()) {
-            <span class="badge badge-warn">offline</span>
-          }
-        </span>
-        <button class="btn" [disabled]="outbox.uploading()" (click)="retryQueue()">
-          {{ outbox.uploading() ? 'Uploading…' : 'Retry now' }}
-        </button>
-      </div>
-      <p class="tiny dim no-margin">
-        Photos are saved on this device and sent when you have signal again.
-      </p>
-    </div>
-  } @else if (outbox.uploading()) {
-    <div class="card">Reading the tag…</div>
-  }
-
-  @if (failures().length) {
-    <div class="error stack">
-      @for (failure of failures(); track $index) {
-        <span>{{ failure }}</span>
+    <div class="notice status">
+      <span>
+        @if (outbox.uploading()) {
+          Reading {{ outbox.pendingCount() }} {{ outbox.pendingCount() === 1 ? 'tag' : 'tags' }}…
+        } @else if (!outbox.online()) {
+          {{ outbox.pendingCount() }} saved, waiting for signal
+        } @else {
+          {{ outbox.pendingCount() }} waiting to upload
+        }
+      </span>
+      @if (!outbox.uploading()) {
+        <button class="btn btn-quiet" (click)="retry()">Retry</button>
       }
-      <button class="btn" (click)="dismissFailures()">Dismiss</button>
     </div>
   }
 
-  @if (results().length) {
-    <h2>Logged this session</h2>
-    @for (result of results(); track result.id) {
-      <app-observation-card
-        [observation]="result"
-        [stores]="stores()"
-        (changed)="onChanged($event)"
-        (removed)="onRemoved($event)"
-      />
-    }
+  @if (outbox.failures().length) {
+    <div class="notice notice-error status">
+      <span class="stack">
+        @for (failure of outbox.failures(); track $index) {
+          <span>{{ failure }}</span>
+        }
+      </span>
+      <button class="btn btn-quiet" (click)="outbox.dismissFailures()" aria-label="Dismiss">
+        <app-icon name="close" [size]="18" />
+      </button>
+    </div>
+  }
+
+  @if (recent().length) {
+    <h2 class="section-title">
+      <span>Recent</span>
+      <a routerLink="/entries">See all</a>
+    </h2>
+    <div class="list">
+      @for (card of recent(); track card.entryId) {
+        <app-item-card [card]="card" />
+      }
+    </div>
   }
 </main>

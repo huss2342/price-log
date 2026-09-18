@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.Base64;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -67,10 +68,12 @@ public class AzureVisionTagExtractor {
         String dataUrl = "data:" + (contentType == null ? "image/jpeg" : contentType)
                 + ";base64," + Base64.getEncoder().encodeToString(imageBytes);
 
-        String userText = chainHint == null || chainHint.isBlank()
-                ? "Read this price tag."
-                : "Read this price tag. The shopper says this store is " + chainHint
-                        + "; trust that over your own guess for storeChain.";
+        // Tags print sale dates without a year, so the model needs today's.
+        String userText = "Read this price tag. Today is " + LocalDate.now() + ".";
+        if (chainHint != null && !chainHint.isBlank()) {
+            userText += " The shopper says this store is " + chainHint
+                    + "; trust that over your own guess for storeChain.";
+        }
 
         ObjectNode body = buildRequest(systemPrompt, userText, dataUrl);
 
