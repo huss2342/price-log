@@ -23,16 +23,28 @@ the actual question — buy now, or wait for it to come round again.
 These conventions are community knowledge, not published policy, so they live in
 a `tag_rule` table you can edit or switch off from Settings as you verify them.
 
-**Compares fairly across stores.** Every size is normalized to one unit — ounces
-for weight, fluid ounces for volume, count for countable goods — so a 5 lb bag
-and a 32 oz bag can be ranked. Products carry two keys: a *normalized key* that
-collapses the same SKU seen at different stores, and a *comparison key* that
-groups substitutable products across brands. Quality claims are part of the
-comparison key, so organic pasture-raised eggs are never priced against
-conventional ones.
+**Compares fairly.** Every size is normalized to one unit — ounces for weight,
+fluid ounces for volume, count for countable goods — so a 5 lb bag and a 32 oz
+bag can be ranked. Products carry two keys: a *normalized key* that collapses
+the same SKU seen twice, and a *comparison key* built from what the item is
+("chicken sausage") that groups substitutes across brands and flavours. Quality
+claims are part of the comparison key, so organic pasture-raised eggs are never
+priced against conventional ones. A group is ranked twice: as the items usually
+cost, and as they ring up today with whatever sale is running.
+
+**Says when something you buy goes on sale.** Costco's published savings are
+matched to your log by item number and stated as before and after, with the day
+they end — alongside any sale still running on a tag you photographed.
+
+**Opens instantly.** The whole log is kept on the device and every screen reads
+from that copy, refreshing it behind the scenes, so a sleeping API never stands
+between you and your own prices.
 
 **Survives a warehouse dead spot.** Photos are queued in IndexedDB and uploaded
 when signal returns, so nothing is lost mid-aisle.
+
+A store is just its chain. Prices barely move between two Costcos, so there are
+no locations to name.
 
 ## Layout
 
@@ -91,8 +103,8 @@ from inside the installed app.
 One person: whoever holds the API key. Nothing is readable without it.
 
 Showing the app to someone does not require opening the log. A browser with no
-key runs against a built-in sample dataset instead of the API -- eight product
-comparisons across three clubs, with the pack sizes and markdown signals that
+key runs against a built-in sample dataset instead of the API -- product
+comparisons across three clubs, with the pack sizes, sales and markdowns that
 make the unit-price ranking worth looking at. It is labelled as sample data on
 every screen, it reaches no network at all, and so it also sidesteps the cold
 start a visitor would otherwise sit through. `?demo=1` forces it on for the
@@ -157,16 +169,18 @@ the single biggest lever on the bill.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/captures` | Upload a tag photo; returns the saved, interpreted observation |
+| `POST` | `/api/captures?chain=` | Upload a tag photo; returns the saved, interpreted observation |
+| `GET` | `/api/observations` | The whole log, newest first; what the app keeps on the device |
+| `GET` | `/api/observations/pending` | Readings flagged for a second look |
+| `PUT` | `/api/observations/{id}` | Correct a reading; re-derives unit price, grouping and tag meaning |
+| `DELETE` | `/api/observations/{id}` | Remove a reading, and the photo it came from |
+| `GET` | `/api/deals` | Costco's current savings on items in the log, before and after |
 | `GET` | `/api/search?q=` | Comparison groups matching a search |
 | `GET` | `/api/categories/{category}` | Comparison groups in a category |
 | `GET` | `/api/groups/{comparisonKey}` | One comparison group in full |
 | `GET` | `/api/products/{id}/history` | Every price logged for one product |
-| `GET` | `/api/observations/pending` | The review queue |
-| `PUT` | `/api/observations/{id}` | Correct a reading; re-derives unit price and tag meaning |
-| `GET`/`POST` | `/api/stores` | Your warehouses |
+| `GET` | `/api/stores` | The chains prices have been logged at |
 | `GET`/`PUT` | `/api/tag-rules` | Store tag conventions |
-| `DELETE` | `/api/observations/{id}` | Remove a reading, and the photo it came from |
 
 Everything except `/actuator/health` requires an `X-API-Key` header when
 `APP_API_KEY` is set.
@@ -174,6 +188,7 @@ Everything except `/actuator/health` requires an `X-API-Key` header when
 ## Notes on accuracy
 
 Extractions below 0.85 confidence, and anything with no determinable size, are
-flagged `needsReview` and collected in the Review tab rather than silently
-trusted. Correcting a product there fixes it for every observation of that item,
-past and future, and re-runs the tag rules against the corrected price.
+flagged `needsReview` and listed first in Entries rather than silently trusted.
+Correcting a product fixes it for every observation of that item, past and
+future, and re-runs the tag rules against the corrected price. Changing what an
+item is compared as moves it into that group.

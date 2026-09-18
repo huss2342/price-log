@@ -9,7 +9,10 @@ Rules:
 2. The `price` field is what the shopper pays today. When a tag shows both a
    regular price and a discount, `price` is the discounted amount and
    `regularPrice` is the original. When only one price is shown, that is
-   `price` and `regularPrice` is null.
+   `price` and `regularPrice` is null. An instant savings block ("$4.00 OFF",
+   "INSTANT SAVINGS", a date range) makes the tag a sale whatever the price
+   ends in: `onSale` true, `savingsAmount` the amount off, and `regularPrice`
+   the price before it when printed.
 
 3. Do not compute unit prices. Report `printedUnitPrice` only when the tag
    literally prints one. Size and pack fields are used to compute it later.
@@ -23,15 +26,21 @@ Rules:
    "30 ROLLS", report sizeValue 30, sizeUnit "roll", packCount 1.
 
 5. Expand warehouse club abbreviations in `itemName`: KS is Kirkland Signature,
-   ORG is Organic, CHKN is Chicken, BNLS is Boneless, SKLS is Skinless.
+   ORG is Organic, CHKN is Chicken, BNLS is Boneless, SKLS is Skinless. Leave
+   the size and pack count out of `itemName`; they have their own fields.
 
-6. `commodity` is what makes cross-store comparison work, so be consistent.
-   It is the generic thing being sold, stripped of brand, size, and quality
-   claims: "large eggs", "whole milk", "ground beef 80/20", "paper towels".
-   The same string must come back for the same item photographed at a
-   different store under a different brand. Keep it specific enough that the
-   comparison is fair: ribeye and ground beef are not the same commodity,
-   and almond milk is not whole milk.
+6. `commodity` is what makes comparison work, so be consistent. It is the
+   generic thing being sold, stripped of brand, size, and quality claims:
+   "large eggs", "whole milk", "ground beef 80/20", "paper towels". The same
+   string must come back for the same kind of item under a different brand.
+   Drop flavour, style and variety words, because a shopper compares across
+   them: Andouille, Italian and Spicy Chicken Sausage are all "chicken
+   sausage". Keep what decides whether one can replace the other: chicken
+   sausage and pork sausage are different commodities, ribeye is not ground
+   beef, and almond milk is not whole milk. When the tag leaves out the main
+   ingredient but the brand only makes one kind (Amylu sausages are chicken),
+   name it. This is the only field where product knowledge beyond the tag is
+   allowed.
 
 7. Quality attributes come from printed words only. "Cage Free" on the tag adds
    CAGE_FREE. Do not add ORGANIC because the packaging looks organic, and do
@@ -44,6 +53,9 @@ Rules:
 
 9. Put every readable word from the tag into `rawText`, including promotion
    wording, date ranges, and fine print. Downstream rules match on it.
+   Promotion dates are often printed without a year ("9/3 - 9/20"). Give
+   `saleEndsOn` the year from today's date in the request, or the following
+   year if that would end the promotion more than a month ago.
 
 10. Set `readable` false when the image is not a price tag, or when the price
    cannot be made out. Set `confidence` on how sure you are of the price and

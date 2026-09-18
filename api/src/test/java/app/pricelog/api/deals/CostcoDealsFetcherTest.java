@@ -2,19 +2,23 @@ package app.pricelog.api.deals;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
 /**
  * The fixture mirrors the real page: the product name appears twice around the
- * availability markers, the discount is split across a bare "$" and a number,
- * and one offer spans two item numbers.
+ * availability markers, amounts are split across bare "$" and number nodes, one
+ * offer spans two item numbers, and some offers state only a saving.
  */
 class CostcoDealsFetcherTest {
 
     private final CostcoDealsFetcher fetcher = new CostcoDealsFetcher("http://unused");
 
     private static final String PAGE = """
+            <div>
+              <span>Pricing shown is warehouse pricing</span>
+              <span>Pricing may vary by location | Valid 8/24/26 - 9/20/26</span>
+            </div>
             <div>
               <span>Buy Online</span>
               <span>Charmin Ultra Soft Bath Tissue</span>
@@ -46,22 +50,52 @@ class CostcoDealsFetcherTest {
             </div>
             <div>
               <span>Online Only Treasure Chest</span>
-              <span>Online</span>
+              <span>Online Only</span>
               <span>Online Only Treasure Chest</span>
               <span>Item 4455661</span>
               <span>After $25.50 OFF</span>
             </div>
+            <div>
+              <span>Amylu Paleo Andouille Chicken Sausages</span>
+              <span>Warehouse Only</span>
+              <span>Amylu Paleo Andouille Chicken Sausages</span>
+              <span>40 oz</span>
+              <span>Item 1451835</span>
+              <span>Save</span><span>$</span><span>4</span>
+            </div>
+            <div>
+              <span>Hillshire Farm Naturals Turkey Breast</span>
+              <span>Warehouse Only</span>
+              <span>Hillshire Farm Naturals Turkey Breast</span>
+              <span>2/16.5 oz</span>
+              <span>Item 947880</span>
+              <span>After $4 OFF</span>
+            </div>
+            <div>
+              <span>Buy Online</span>
+              <span>Kirkland Signature Micellar Facial Cleansing Wipes</span>
+              <span>Warehouse</span><span>&amp;</span><span>Online</span>
+              <span>Kirkland Signature Micellar Facial Cleansing Wipes</span>
+              <span>180 ct</span>
+              <span>Item 1931211</span>
+              <span>Valid through 8/30/26.</span>
+              <span>Save</span><span>$</span><span>3</span>
+            </div>
             """;
+
+    private PublishedDeal deal(String itemNumber) {
+        return fetcher.parse(PAGE).stream()
+                .filter(d -> d.itemNumbers().contains(itemNumber))
+                .findFirst()
+                .orElseThrow();
+    }
 
     @Test
     void keepsTheSalePriceAndTheAmountOffApart() {
         // The page prints "$23.99" as the promotional price and "After $6 OFF"
         // as the saving. Reading the first as a discount would turn a $6 saving
         // into a $23 one and imply the item costs $1.99.
-        PublishedDeal charmin = fetcher.parse(PAGE).stream()
-                .filter(d -> d.itemNumbers().contains("2048748"))
-                .findFirst()
-                .orElseThrow();
+        PublishedDeal charmin = deal("2048748");
 
         assertThat(charmin.title()).isEqualTo("Charmin Ultra Soft Bath Tissue");
         assertThat(charmin.salePriceCents()).isEqualTo(2399);
@@ -69,15 +103,42 @@ class CostcoDealsFetcherTest {
     }
 
     @Test
+    void anAmountAfterSaveIsTheSavingNotThePrice() {
+        // Printed as "Save", "$", "4". Read as a price, this advertised 40 oz of
+        // sausages at $4 when the tag in the warehouse said $9.99 after $4 off.
+        PublishedDeal amylu = deal("1451835");
+
+        assertThat(amylu.discountCents()).isEqualTo(400);
+        assertThat(amylu.salePriceCents()).isNull();
+    }
+
+    @Test
+    void warehouseOnlyOffersAreValidInTheWarehouse() {
+        assertThat(deal("1451835").inWarehouse()).isTrue();
+        assertThat(deal("2048748").inWarehouse()).isTrue();
+    }
+
+    @Test
+    void marksOnlineOnlyOffersAsNotValidInWarehouse() {
+        // Useless to someone standing in a warehouse, so it must be separable.
+        assertThat(deal("4455661").inWarehouse()).isFalse();
+    }
+
+    @Test
     void readsAPriceSplitAcrossLinesWithNoCents() {
-        PublishedDeal sock = fetcher.parse(PAGE).stream()
-                .filter(d -> d.itemNumbers().contains("1927653"))
-                .findFirst()
-                .orElseThrow();
+        PublishedDeal sock = deal("1927653");
 
         assertThat(sock.title()).isEqualTo("adidas Men's Quarter Sock");
         assertThat(sock.salePriceCents()).isEqualTo(900);
-        assertThat(sock.inWarehouse()).isTrue();
+    }
+
+    @Test
+    void figuresNeverBleedIntoTheNextOffer() {
+        // The sock states only a price; the offers below it state savings. Each
+        // keeps its own.
+        assertThat(deal("1927653").discountCents()).isNull();
+        assertThat(deal("1451835").salePriceCents()).isNull();
+        assertThat(deal("947880").discountCents()).isEqualTo(400);
     }
 
     @Test
@@ -93,10 +154,7 @@ class CostcoDealsFetcherTest {
 
     @Test
     void readsTheWrittenOutDiscountFormAndItsDecimals() {
-        PublishedDeal chest = fetcher.parse(PAGE).stream()
-                .filter(d -> d.itemNumbers().contains("4455661"))
-                .findFirst()
-                .orElseThrow();
+        PublishedDeal chest = deal("4455661");
 
         assertThat(chest.discountCents()).isEqualTo(2550);
         // Only an amount off was printed, so there is no price to claim.
@@ -104,21 +162,17 @@ class CostcoDealsFetcherTest {
     }
 
     @Test
-    void marksOnlineOnlyOffersAsNotValidInWarehouse() {
-        PublishedDeal chest = fetcher.parse(PAGE).stream()
-                .filter(d -> d.itemNumbers().contains("4455661"))
-                .findFirst()
-                .orElseThrow();
-
-        // Useless to someone standing in a warehouse, so it must be separable.
-        assertThat(chest.inWarehouse()).isFalse();
+    void offersRunUntilTheBookletEndsUnlessTheyEndSooner() {
+        assertThat(deal("1451835").validUntil()).isEqualTo(LocalDate.of(2026, 9, 20));
+        assertThat(deal("1931211").validUntil()).isEqualTo(LocalDate.of(2026, 8, 30));
+        assertThat(deal("1931211").discountCents()).isEqualTo(300);
     }
 
     @Test
     void neverMistakesFinePrintOrSizesForTheProductName() {
         assertThat(fetcher.parse(PAGE))
                 .extracting(PublishedDeal::title)
-                .noneMatch(t -> t.startsWith("Limit ") || t.equals("6 pair"));
+                .noneMatch(t -> t.startsWith("Limit ") || t.equals("6 pair") || t.startsWith("Valid"));
     }
 
     @Test

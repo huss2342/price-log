@@ -8,7 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StoreRepository extends JpaRepository<Store, Long> {
 
-    Optional<Store> findByChainAndLabel(Chain chain, String label);
+    /** There is one store per chain; see V6__one_store_per_chain.sql. */
+    Optional<Store> findFirstByChainOrderByIdAsc(Chain chain);
 
     List<Store> findAllByOrderByChainAscLabelAsc();
 }

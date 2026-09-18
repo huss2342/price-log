@@ -107,6 +107,7 @@ public class DealService {
                     row.setSalePriceCents(deal.salePriceCents());
                     row.setDiscountCents(deal.discountCents());
                     row.setInWarehouse(deal.inWarehouse());
+                    row.setValidUntil(deal.validUntil());
                     row.setLastSeenOn(today);
                     row.setActive(true);
                     deals.save(row);
@@ -214,38 +215,64 @@ public class DealService {
             }
         }
 
-        // Watched items first, then the biggest discounts.
+        // Ending soonest first, since those are the ones to act on; then the
+        // biggest savings.
         matches.sort(Comparator
-                .comparing(DealMatch::watched).reversed()
+                .comparing(DealMatch::validUntil, Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(Comparator.comparing(
                         (DealMatch m) -> m.discountCents() == null ? 0 : m.discountCents()).reversed()));
         return matches;
     }
 
     private DealMatch toMatch(DealSighting deal, PriceObservation observation) {
-        int lastPrice = observation.getPriceCents();
+        Long productId = observation.getProduct().getId();
+        Integer regular = regularPriceCents(productId);
 
-        // Costco's own promotional price is the truth when it states one. The
-        // subtraction is only a fallback, and only as good as the last sighting.
-        Integer implied = deal.getSalePriceCents();
-        if (implied == null && deal.getDiscountCents() != null) {
-            implied = Math.max(0, lastPrice - deal.getDiscountCents());
+        // Costco's own figures are the truth when it prints them. It usually
+        // prints only one of price and saving, and the other is only as good as
+        // the regular price last photographed.
+        Integer dealPrice = deal.getSalePriceCents();
+        Integer discount = deal.getDiscountCents();
+        boolean estimated = false;
+        if (dealPrice == null && discount != null && regular != null) {
+            dealPrice = Math.max(0, regular - discount);
+            estimated = true;
+        }
+        if (discount == null && dealPrice != null && regular != null && regular > dealPrice) {
+            discount = regular - dealPrice;
+            estimated = true;
         }
 
         return new DealMatch(
-                observation.getProduct().getId(),
+                productId,
                 observation.getProduct().getDisplayName(),
                 observation.getProduct().getBrand(),
                 deal.getItemNumber(),
                 deal.getTitle(),
-                deal.getSalePriceCents(),
-                deal.getDiscountCents(),
+                regular,
+                dealPrice,
+                discount,
+                estimated,
                 deal.isInWarehouse(),
-                observation.getProduct().isWatched(),
-                lastPrice,
-                implied,
+                deal.getValidUntil(),
                 observation.getObservedOn(),
                 ChronoUnit.DAYS.between(observation.getObservedOn(), LocalDate.now()));
+    }
+
+    /**
+     * The price without any promotion: the regular price a sale tag printed
+     * beside its own, or the newest sighting that was not on sale at all.
+     */
+    private Integer regularPriceCents(Long productId) {
+        for (PriceObservation o : observations.findByProductIdOrderByObservedOnDescIdDesc(productId)) {
+            if (o.getRegularPriceCents() != null && o.getRegularPriceCents() > o.getPriceCents()) {
+                return o.getRegularPriceCents();
+            }
+            if (!o.isOnSale()) {
+                return o.getPriceCents();
+            }
+        }
+        return null;
     }
 
     private String fingerprint(String itemNumber, String title) {

@@ -31,6 +31,7 @@ public class ObservationService {
     private final PriceObservationRepository observations;
     private final ProductRepository products;
     private final StoreRepository stores;
+    private final StoreResolver storeResolver;
     private final ProductResolver productResolver;
     private final TagRuleEngine ruleEngine;
     private final PhotoStore photos;
@@ -39,6 +40,7 @@ public class ObservationService {
     public ObservationService(PriceObservationRepository observations,
                               ProductRepository products,
                               StoreRepository stores,
+                              StoreResolver storeResolver,
                               ProductResolver productResolver,
                               TagRuleEngine ruleEngine,
                               PhotoStore photos,
@@ -46,6 +48,7 @@ public class ObservationService {
         this.observations = observations;
         this.products = products;
         this.stores = stores;
+        this.storeResolver = storeResolver;
         this.productResolver = productResolver;
         this.ruleEngine = ruleEngine;
         this.photos = photos;
@@ -60,6 +63,12 @@ public class ObservationService {
     @Transactional(readOnly = true)
     public java.util.List<PriceObservation> recent(int limit) {
         return observations.findRecent(PageRequest.of(0, limit));
+    }
+
+    /** The whole log, newest first. One person's shopping stays small enough to send at once. */
+    @Transactional(readOnly = true)
+    public java.util.List<PriceObservation> all() {
+        return observations.findAllNewestFirst();
     }
 
     @Transactional(readOnly = true)
@@ -80,6 +89,10 @@ public class ObservationService {
         }
         if (update.brand() != null) {
             product.setBrand(update.brand().isBlank() ? null : update.brand().trim());
+            productChanged = true;
+        }
+        if (update.commodity() != null && !update.commodity().isBlank()) {
+            product.setCommodity(ProductResolver.normalizeCommodity(update.commodity()));
             productChanged = true;
         }
         if (update.category() != null) {
@@ -110,7 +123,9 @@ public class ObservationService {
             observation.setProduct(product);
         }
 
-        if (update.storeId() != null) {
+        if (update.chain() != null) {
+            observation.setStore(storeResolver.forChain(update.chain()));
+        } else if (update.storeId() != null) {
             observation.setStore(stores.findById(update.storeId())
                     .orElseThrow(() -> new NoSuchElementException("No store " + update.storeId())));
         }
@@ -125,6 +140,10 @@ public class ObservationService {
         }
         if (update.onSale() != null) {
             observation.setOnSale(update.onSale());
+            if (!update.onSale()) {
+                observation.setRegularPriceCents(null);
+                observation.setSaleEndsOn(null);
+            }
         }
         if (update.saleSignal() != null) {
             observation.setSaleSignal(update.saleSignal());
@@ -153,7 +172,7 @@ public class ObservationService {
         // A corrected price can change its ending, and with it the whole reading
         // of the tag. Only re-derive when the user did not state a signal.
         if (update.saleSignal() == null) {
-            reapplyTagRules(observation, update.onSale() == null);
+            reapplyTagRules(observation, update.onSale() == null, update.discontinued() == null);
         }
 
         return observations.save(observation);
@@ -163,24 +182,33 @@ public class ObservationService {
      * Re-runs the store's tag conventions against the current price, reusing the
      * markers and raw text captured from the original photo.
      *
-     * @param refreshOnSale false when the user set the sale flag by hand, so
-     *                      their answer is not overwritten
+     * @param refreshOnSale       false when the user set the sale flag by hand, so
+     *                            their answer is not overwritten
+     * @param refreshDiscontinued false when the user said whether it is being
+     *                            restocked, for the same reason
      */
-    private void reapplyTagRules(PriceObservation observation, boolean refreshOnSale) {
+    private void reapplyTagRules(PriceObservation observation, boolean refreshOnSale,
+                                 boolean refreshDiscontinued) {
         ExtractedTag tag = parseExtraction(observation.getRawExtraction());
         List<String> markers = tag == null ? List.of() : tag.markersOrEmpty();
         String rawText = tag == null ? null : tag.rawText();
 
-        TagVerdict verdict = ruleEngine.evaluate(
-                observation.getStore().getChain(), observation.getPriceCents(), markers, rawText);
+        Integer regular = observation.getRegularPriceCents();
+        boolean showsSaving = regular != null && regular > observation.getPriceCents()
+                || (!refreshOnSale && observation.isOnSale());
+
+        TagVerdict verdict = ruleEngine.evaluate(observation.getStore().getChain(),
+                observation.getPriceCents(), markers, rawText, showsSaving);
 
         observation.setSaleSignal(verdict.signal());
-        observation.setDiscontinued(verdict.discontinued());
         observation.setTagInsights(verdict.matched());
         observation.setAdvice(verdict.advice());
 
+        if (refreshDiscontinued) {
+            observation.setDiscontinued(verdict.discontinued());
+        }
         if (refreshOnSale) {
-            observation.setOnSale(verdict.discounted() || observation.getRegularPriceCents() != null);
+            observation.setOnSale(verdict.discounted());
         }
     }
 

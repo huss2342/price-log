@@ -1,0 +1,43 @@
+<main class="page">
+  <header class="page-head">
+    <h1>Entries</h1>
+    @if (log.syncing()) {
+      <span class="small dim">Updating…</span>
+    } @else if (log.entries().length) {
+      <span class="small dim">{{ log.entries().length }} logged</span>
+    }
+  </header>
+
+  @if (log.syncError() && !log.entries().length) {
+    <p class="notice notice-error">{{ log.syncError() }}</p>
+  }
+
+  @if (toCheck().length) {
+    <h2 class="section-title">Check these</h2>
+    <div class="list">
+      @for (card of toCheck(); track card.entryId) {
+        <app-item-card [card]="card" />
+      }
+    </div>
+  }
+
+  @for (day of days(); track day.date) {
+    <h2 class="section-title">{{ day.label }}</h2>
+    <div class="list">
+      @for (card of day.cards; track card.entryId) {
+        <app-item-card [card]="card" />
+      }
+    </div>
+  } @empty {
+    @if (!toCheck().length) {
+      @if (!log.loaded()) {
+        <p class="empty">Loading…</p>
+      } @else if (!log.syncError()) {
+        <p class="empty">
+          <strong>No entries yet</strong>
+          Every tag you snap is listed here.
+        </p>
+      }
+    }
+  }
+</main>

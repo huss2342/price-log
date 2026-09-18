@@ -25,25 +25,41 @@ public class TagRuleEngine {
 
     @Transactional(readOnly = true)
     public TagVerdict evaluate(Chain chain, int priceCents, List<String> markers, String rawText) {
+        return evaluate(chain, priceCents, markers, rawText, false);
+    }
+
+    /**
+     * @param priceIsReduced the tag itself shows a saving -- a regular price or an
+     *                       amount off printed beside the price. That outranks
+     *                       anything the price ending implies: Costco's instant
+     *                       savings mostly land on .99, the very ending that
+     *                       otherwise means an everyday price.
+     */
+    @Transactional(readOnly = true)
+    public TagVerdict evaluate(Chain chain, int priceCents, List<String> markers, String rawText,
+                               boolean priceIsReduced) {
         String haystack = rawText == null ? "" : rawText.toUpperCase(Locale.ROOT);
         List<String> upperMarkers = markers.stream().map(m -> m.toUpperCase(Locale.ROOT)).toList();
 
         List<TagRule> matched = new ArrayList<>();
         for (TagRule rule : rules.findByChainAndEnabledTrueOrderByPriorityAsc(chain)) {
+            if (priceIsReduced && rule.getSignal() == SaleSignal.REGULAR) {
+                continue;
+            }
             if (applies(rule, priceCents, upperMarkers, haystack)) {
                 matched.add(rule);
             }
         }
 
         if (matched.isEmpty()) {
-            return TagVerdict.unknown();
+            return priceIsReduced ? TagVerdict.savings() : TagVerdict.unknown();
         }
 
         TagRule primary = matched.getFirst();
         boolean discontinued = matched.stream().anyMatch(r -> r.getSignal() == SaleSignal.DISCONTINUED);
         // Any matched rule can mean a price cut, not only the top-priority one:
         // a discontinued item marked down to .97 is both gone soon and cheaper.
-        boolean discounted = matched.stream().anyMatch(r -> isDiscount(r.getSignal()));
+        boolean discounted = priceIsReduced || matched.stream().anyMatch(r -> isDiscount(r.getSignal()));
         List<String> descriptions = matched.stream().map(TagRule::getMeaning).toList();
 
         return new TagVerdict(primary.getSignal(), primary.getMeaning(), primary.getAdvice(),

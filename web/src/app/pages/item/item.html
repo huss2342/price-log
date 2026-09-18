@@ -1,0 +1,257 @@
+<main class="page">
+  <header class="page-head">
+    <button class="btn btn-quiet back" (click)="back()">
+      <app-icon name="back" [size]="20" />
+      Back
+    </button>
+    @if (product() && settings.canWrite() && !editing()) {
+      <button class="btn btn-quiet" (click)="startEdit()">Edit</button>
+    }
+  </header>
+
+  @if (product(); as p) {
+    @let e = selected()!;
+
+    @if (editing() && draft(); as d) {
+      <form class="panel stack" (ngSubmit)="save()">
+        <div>
+          <label for="f-name">Name</label>
+          <input id="f-name" name="name" [ngModel]="d.name" (ngModelChange)="patch('name', $event)" />
+        </div>
+
+        <div>
+          <label for="f-commodity">Compare as</label>
+          <input
+            id="f-commodity"
+            name="commodity"
+            list="f-commodities"
+            autocapitalize="off"
+            [ngModel]="d.commodity"
+            (ngModelChange)="patch('commodity', $event)"
+          />
+          <datalist id="f-commodities">
+            @for (c of commodities(); track c) {
+              <option [value]="c"></option>
+            }
+          </datalist>
+          <p class="hint">Items given the same name here are ranked against each other.</p>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label for="f-brand">Brand</label>
+            <input id="f-brand" name="brand" [ngModel]="d.brand" (ngModelChange)="patch('brand', $event)" />
+          </div>
+          <div>
+            <label for="f-category">Category</label>
+            <select id="f-category" name="category" [ngModel]="d.category" (ngModelChange)="patch('category', $event)">
+              @for (c of categories; track c) {
+                <option [value]="c">{{ categoryLabel(c) }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div>
+            <label for="f-size">Size</label>
+            <input id="f-size" name="size" type="number" inputmode="decimal" step="0.01"
+              [ngModel]="d.sizeValue" (ngModelChange)="patch('sizeValue', $event)" />
+          </div>
+          <div>
+            <label for="f-unit">Unit</label>
+            <input id="f-unit" name="unit" placeholder="oz" autocapitalize="off"
+              [ngModel]="d.sizeUnit" (ngModelChange)="patch('sizeUnit', $event)" />
+          </div>
+          <div>
+            <label for="f-pack">Pack</label>
+            <input id="f-pack" name="pack" type="number" inputmode="numeric"
+              [ngModel]="d.packCount" (ngModelChange)="patch('packCount', $event)" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label for="f-price">Price paid ($)</label>
+            <input id="f-price" name="price" type="number" inputmode="decimal" step="0.01" required
+              [ngModel]="d.price" (ngModelChange)="patch('price', $event)" />
+          </div>
+          <div>
+            <label for="f-regular">Regular ($)</label>
+            <input id="f-regular" name="regular" type="number" inputmode="decimal" step="0.01"
+              placeholder="if on sale" [ngModel]="d.regular" (ngModelChange)="patch('regular', $event)" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label for="f-ends">Sale ends</label>
+            <input id="f-ends" name="ends" type="date" [ngModel]="d.saleEndsOn"
+              (ngModelChange)="patch('saleEndsOn', $event)" />
+          </div>
+          <div>
+            <label for="f-chain">Store</label>
+            <select id="f-chain" name="chain" [ngModel]="d.chain" (ngModelChange)="patch('chain', $event)">
+              @for (c of chains; track c) {
+                <option [value]="c">{{ chainLabels[c] }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <label class="check">
+          <input type="checkbox" name="discontinued" [ngModel]="d.discontinued"
+            (ngModelChange)="patch('discontinued', $event)" />
+          Not restocking
+        </label>
+
+        @if (error(); as message) {
+          <p class="notice notice-error">{{ message }}</p>
+        }
+
+        <div class="row">
+          <button type="submit" class="btn btn-primary grow" [disabled]="saving()">Save</button>
+          <button type="button" class="btn" (click)="editing.set(false)">Cancel</button>
+        </div>
+      </form>
+    } @else {
+      <section class="hero">
+        <h1>{{ shortName(p.name) }}</h1>
+        @if (subtitle()) {
+          <p class="dim small">{{ subtitle() }}</p>
+        }
+
+        <div class="price-line">
+          <span class="price">{{ p.nowCents | money }}</span>
+          @if (p.saleCents != null && p.regularCents != null && p.regularCents > p.saleCents) {
+            <span class="was">{{ p.regularCents | money }}</span>
+          }
+          <span class="unit">{{ p.nowUnit | unitPrice: p.baseUnit }}</span>
+        </div>
+
+        @if (chips().length) {
+          <div class="chips">
+            @for (chip of chips(); track chip.text) {
+              <span class="chip chip-{{ chip.tone }}">{{ chip.text }}</span>
+            }
+          </div>
+        }
+
+        @if (listing()) {
+          <p class="notice listing">Costco: {{ offer() }}</p>
+        }
+
+        @if (error(); as message) {
+          <p class="notice notice-error">{{ message }}</p>
+        }
+
+        @if (e.needsReview && settings.canWrite()) {
+          <div class="row">
+            <button class="btn btn-primary grow" [disabled]="saving()" (click)="confirm()">
+              Looks right
+            </button>
+            <button class="btn grow" (click)="startEdit()">Fix it</button>
+          </div>
+        }
+      </section>
+    }
+
+    @if (group().length > 1) {
+      <h2 class="section-title">Compared with {{ group().length - 1 }} more</h2>
+      <div class="panel">
+        <p class="compare-head">Regular price</p>
+        <ol class="ranking">
+          @for (row of usually().ranked; track row.product.productId) {
+            <li [class.me]="row.product.productId === p.productId">
+              <a class="name" [routerLink]="['/item', row.product.productId]" replaceUrl>{{ shortName(row.product.name) }}</a>
+              <span class="unit num">{{ row.unitCents | unitPrice: row.product.baseUnit }}</span>
+              <span class="sub num">{{ row.priceCents | money }} · {{ sizeLabel(row.product.latest) }}</span>
+              <span class="delta" [class.best]="$first">{{ $first ? 'Cheapest' : '+' + row.percentAbove + '%' }}</span>
+            </li>
+          }
+        </ol>
+
+        @if (anySale()) {
+          <p class="compare-head">With today's sales</p>
+          <ol class="ranking">
+            @for (row of today().ranked; track row.product.productId) {
+              <li [class.me]="row.product.productId === p.productId">
+                <a class="name" [routerLink]="['/item', row.product.productId]" replaceUrl>{{ shortName(row.product.name) }}</a>
+                <span class="unit num">{{ row.unitCents | unitPrice: row.product.baseUnit }}</span>
+                <span class="sub num">
+                  {{ row.priceCents | money }}{{ row.onSale ? ' on sale' : '' }}
+                  @if (row.onSale && row.product.saleEndsOn) {
+                    till {{ date(row.product.saleEndsOn) }}
+                  }
+                </span>
+                <span class="delta" [class.best]="$first">{{ $first ? 'Cheapest' : '+' + row.percentAbove + '%' }}</span>
+              </li>
+            }
+          </ol>
+        }
+
+        @if (unranked()) {
+          <p class="small dim unranked">No size to rank: {{ unranked() }}</p>
+        }
+      </div>
+    }
+
+    <h2 class="section-title">Price history</h2>
+    <div class="panel history">
+      @for (h of p.entries; track h.id) {
+        <a class="history-row" [class.selected]="p.entries.length > 1 && h.id === e.id"
+          [routerLink]="[]" [queryParams]="{ entry: h.id }" replaceUrl>
+          <span>{{ day(h.observedOn) }}</span>
+          <span class="small dim">
+            @if (wasPrice(h); as was) {
+              <s>{{ was | money }}</s>
+            } @else if (h.onSale) {
+              markdown
+            }
+          </span>
+          <strong class="num">{{ h.priceCents | money }}</strong>
+        </a>
+      }
+    </div>
+
+    <h2 class="section-title">{{ p.entries.length > 1 ? 'Tag from ' + day(e.observedOn) : 'The tag' }}</h2>
+    <div class="panel stack">
+      <dl class="facts small">
+        <dt>Seen</dt>
+        <dd>{{ date(e.observedOn) }}, {{ chainLabels[e.chain] }}</dd>
+        @if (e.itemNumber) {
+          <dt>Item</dt>
+          <dd class="num">{{ e.itemNumber }}</dd>
+        }
+        @if (e.saleEndsOn) {
+          <dt>Sale ends</dt>
+          <dd>{{ date(e.saleEndsOn) }}</dd>
+        }
+        @if (e.tagInsights.length) {
+          <dt>Reading</dt>
+          <dd>{{ e.tagInsights.join(' ') }}</dd>
+        }
+      </dl>
+
+      @if (e.photoUrl) {
+        <button class="btn btn-block" (click)="showPhoto.set(!showPhoto())">
+          {{ showPhoto() ? 'Hide photo' : 'Show photo' }}
+        </button>
+        @if (showPhoto()) {
+          <img class="photo" [appPhotoSrc]="e.photoUrl" alt="Photo of the price tag" />
+        }
+      }
+
+      @if (settings.canWrite()) {
+        <button class="btn btn-block btn-danger" (click)="remove()">Delete this entry</button>
+      }
+    </div>
+  } @else if (!log.loaded()) {
+    <p class="empty">Loading…</p>
+  } @else {
+    <p class="empty">
+      <strong>Not in your log</strong>
+      It may have been deleted.
+    </p>
+  }
+</main>

@@ -1,4 +1,5 @@
 import { Injectable, signal, effect } from '@angular/core';
+import { CHAINS, type Chain } from './models';
 
 const KEY = 'pricelog.settings';
 
@@ -19,21 +20,22 @@ function defaultApiBase(): string {
 interface Persisted {
   apiBase: string;
   apiKey: string;
-  /** Remembered so the common case is one tap: you shop the same places. */
-  defaultStoreId: number | null;
+  /** Remembered so the common case is no tap at all: you shop the same place. */
+  chain: Chain | null;
 }
 
 const DEFAULTS: Persisted = {
   apiBase: '',
   apiKey: '',
-  defaultStoreId: null,
+  chain: null,
 };
 
 @Injectable({ providedIn: 'root' })
 export class Settings {
   readonly apiBase = signal(defaultApiBase());
   readonly apiKey = signal(DEFAULTS.apiKey);
-  readonly defaultStoreId = signal<number | null>(DEFAULTS.defaultStoreId);
+  /** The chain new photos are logged at; null lets each tag's design decide. */
+  readonly chain = signal<Chain | null>(DEFAULTS.chain);
 
   constructor() {
     this.load();
@@ -43,9 +45,13 @@ export class Settings {
       const value: Persisted = {
         apiBase: this.apiBase(),
         apiKey: this.apiKey(),
-        defaultStoreId: this.defaultStoreId(),
+        chain: this.chain(),
       };
-      localStorage.setItem(KEY, JSON.stringify(value));
+      try {
+        localStorage.setItem(KEY, JSON.stringify(value));
+      } catch {
+        // Private browsing. The settings still hold for this session.
+      }
     });
   }
 
@@ -64,22 +70,24 @@ export class Settings {
     return this.apiBase().trim().length > 0;
   }
 
-  private storedApiBase = false;
-
   private load(): void {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return;
     try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return;
       const parsed = { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Persisted>) };
       // An older install may have stored a blank or stale localhost address.
       if (parsed.apiBase) {
         this.apiBase.set(parsed.apiBase);
-        this.storedApiBase = true;
       }
       this.apiKey.set(parsed.apiKey);
-      this.defaultStoreId.set(parsed.defaultStoreId);
+      // Older installs remembered a store id instead, which no longer means anything.
+      this.chain.set(CHAINS.includes(parsed.chain as Chain) ? parsed.chain : null);
     } catch {
-      localStorage.removeItem(KEY);
+      try {
+        localStorage.removeItem(KEY);
+      } catch {
+        // Nothing stored to clear.
+      }
     }
   }
 

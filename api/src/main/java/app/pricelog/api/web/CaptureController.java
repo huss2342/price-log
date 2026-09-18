@@ -2,6 +2,7 @@ package app.pricelog.api.web;
 
 import app.pricelog.api.capture.CaptureResult;
 import app.pricelog.api.capture.CaptureService;
+import app.pricelog.api.domain.Chain;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.LocalDate;
@@ -24,9 +25,14 @@ public class CaptureController {
      * The whole app in one call: upload a tag photo, get back a saved,
      * fully-interpreted observation ready for confirmation.
      */
+    /**
+     * @param chain   where the photo was taken; omitted, the tag's design decides
+     * @param storeId the older way of saying the same thing, still accepted
+     */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ObservationView capture(
             @RequestPart("photo") MultipartFile photo,
+            @RequestParam(required = false) Chain chain,
             @RequestParam(required = false) Long storeId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate observedOn) {
@@ -43,7 +49,7 @@ public class CaptureController {
         }
 
         CaptureResult result = captureService.capture(
-                bytes, photo.getContentType(), storeId, observedOn);
+                bytes, photo.getContentType(), chain, storeId, observedOn);
 
         return ObservationView.of(result.observation());
     }

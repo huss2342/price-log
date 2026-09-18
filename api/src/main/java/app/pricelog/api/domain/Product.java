@@ -22,6 +22,13 @@ public class Product {
     @Column(name = "comparison_key", nullable = false, length = 255)
     private String comparisonKey;
 
+    /**
+     * What the item is, without brand, size or quality claims: "chicken sausage".
+     * Null on rows logged before it had a column; see ProductResolver#commodityOf.
+     */
+    @Column(length = 128)
+    private String commodity;
+
     @Column(name = "display_name", nullable = false, length = 255)
     private String displayName;
 
@@ -90,6 +97,14 @@ public class Product {
 
     public void setComparisonKey(String comparisonKey) {
         this.comparisonKey = comparisonKey;
+    }
+
+    public String getCommodity() {
+        return commodity;
+    }
+
+    public void setCommodity(String commodity) {
+        this.commodity = commodity;
     }
 
     public String getDisplayName() {

@@ -5,41 +5,39 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'capture' },
   {
     path: 'capture',
-    title: 'Snap a tag',
+    title: 'Snap',
     canMatch: [writerGuard],
     loadComponent: () => import('./pages/capture/capture').then((m) => m.CapturePage),
   },
   {
     path: 'browse',
-    title: 'Browse prices',
+    title: 'Browse',
     loadComponent: () => import('./pages/browse/browse').then((m) => m.BrowsePage),
   },
   {
-    path: 'group/:key',
-    title: 'Price comparison',
-    loadComponent: () => import('./pages/group/group').then((m) => m.GroupPage),
+    path: 'item/:id',
+    title: 'Item',
+    loadComponent: () => import('./pages/item/item').then((m) => m.ItemPage),
   },
   {
     path: 'deals',
-    title: 'On sale now',
+    title: 'Deals',
     loadComponent: () => import('./pages/deals/deals').then((m) => m.DealsPage),
   },
   {
-    path: 'deals/published',
-    title: "Costco's listing",
-    loadComponent: () =>
-      import('./pages/published-deals/published-deals').then((m) => m.PublishedDealsPage),
-  },
-  {
-    path: 'review',
-    title: 'Review queue',
+    path: 'entries',
+    title: 'Entries',
     canMatch: [writerGuard],
-    loadComponent: () => import('./pages/review/review').then((m) => m.ReviewPage),
+    loadComponent: () => import('./pages/entries/entries').then((m) => m.EntriesPage),
   },
   {
     path: 'settings',
     title: 'Settings',
     loadComponent: () => import('./pages/settings/settings-page').then((m) => m.SettingsPage),
   },
-  { path: '**', redirectTo: 'deals' },
+  // Old addresses a home-screen app may still open on.
+  { path: 'review', redirectTo: 'entries' },
+  { path: 'group/:key', redirectTo: 'browse' },
+  { path: 'deals/published', redirectTo: 'deals' },
+  { path: '**', redirectTo: 'browse' },
 ];

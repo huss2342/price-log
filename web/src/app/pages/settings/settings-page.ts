@@ -1,156 +1,96 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Api } from '../../core/api';
+import { describeError } from '../../core/errors';
+import { LogStore } from '../../core/log-store';
+import { CHAIN_LABELS, CHAINS, type SaleSignal, type TagRule } from '../../core/models';
 import { Settings } from '../../core/settings';
-import { CHAIN_LABELS, type Chain, type Store, type TagRule } from '../../core/models';
+import { isDemoMode } from '../../demo/demo-mode';
+
+const SIGNAL_LABELS: Record<SaleSignal, string> = {
+  REGULAR: 'Everyday price',
+  INSTANT_SAVINGS: 'Instant savings',
+  CLEARANCE: 'Clearance',
+  MANAGER_MARKDOWN: 'Manager markdown',
+  DISCONTINUED: 'Not restocking',
+  UNKNOWN: 'Unread',
+};
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule],
   templateUrl: './settings-page.html',
   styleUrl: './settings-page.scss',
 })
 export class SettingsPage implements OnInit {
   private readonly api = inject(Api);
+  private readonly log = inject(LogStore);
   protected readonly settings = inject(Settings);
 
-  protected readonly chains: Chain[] = ['COSTCO', 'SAMS_CLUB', 'ALDI', 'WALMART', 'OTHER'];
+  protected readonly demo = isDemoMode();
   protected readonly chainLabels = CHAIN_LABELS;
+  protected readonly signalLabels = SIGNAL_LABELS;
 
-  protected readonly stores = signal<Store[]>([]);
   protected readonly rules = signal<TagRule[]>([]);
-  protected readonly status = signal<string | null>(null);
-  protected readonly error = signal<string | null>(null);
+  protected readonly testing = signal(false);
+  protected readonly result = signal<{ ok: boolean; text: string } | null>(null);
 
-  protected readonly editingId = signal<number | null>(null);
-  protected readonly draft = signal<Partial<Store>>({});
-
-  protected readonly newChain = signal<Chain>('COSTCO');
-  protected readonly newLabel = signal('');
-  protected readonly newCity = signal('');
-  protected readonly newState = signal('');
+  protected readonly ruleChains = computed(() =>
+    CHAINS.filter((chain) => this.rules().some((rule) => rule.chain === chain)),
+  );
 
   ngOnInit(): void {
-    this.reload();
+    this.loadRules();
   }
 
+  protected setApiBase(event: Event): void {
+    this.settings.apiBase.set((event.target as HTMLInputElement).value.trim());
+    this.result.set(null);
+  }
+
+  protected setApiKey(event: Event): void {
+    this.settings.apiKey.set((event.target as HTMLInputElement).value.trim());
+    this.result.set(null);
+  }
+
+  protected async test(): Promise<void> {
+    this.testing.set(true);
+    await this.log.refresh(true);
+    this.testing.set(false);
+    const error = this.log.syncError();
+    this.result.set(
+      error
+        ? { ok: false, text: error }
+        : { ok: true, text: `Connected. ${this.log.entries().length} entries in the log.` },
+    );
+    this.loadRules();
+  }
+
+  /** The key decides whether the sample log or the real one is loaded, and that is settled at startup. */
   protected reload(): void {
-    this.error.set(null);
-    this.api.stores().subscribe({
-      next: (rows) => this.stores.set(rows),
-      error: (err) => this.error.set(this.message(err, 'Could not load stores.')),
+    location.reload();
+  }
+
+  protected rulesFor(chain: string): TagRule[] {
+    return this.rules().filter((rule) => rule.chain === chain);
+  }
+
+  protected pattern(rule: TagRule): string {
+    if (rule.matchType === 'PRICE_ENDING') return `Ends ${rule.pattern}`;
+    if (rule.matchType === 'MARKER') return rule.pattern.replace('_MARKER', '').replaceAll('_', ' ').toLowerCase();
+    return `“${rule.pattern.toLowerCase()}”`;
+  }
+
+  protected toggle(rule: TagRule): void {
+    this.api.updateTagRule(rule.id, { enabled: !rule.enabled }).subscribe({
+      next: (saved) => this.rules.update((rows) => rows.map((r) => (r.id === saved.id ? saved : r))),
+      error: (err) =>
+        this.result.set({ ok: false, text: describeError(err, 'Could not change that rule.') }),
     });
+  }
+
+  private loadRules(): void {
     this.api.tagRules().subscribe({
       next: (rows) => this.rules.set(rows),
-      error: () => {},
+      error: () => this.rules.set([]),
     });
-  }
-
-  protected addStore(): void {
-    const label = this.newLabel().trim();
-    if (!label) return;
-
-    this.api
-      .createStore({
-        chain: this.newChain(),
-        label,
-        city: this.newCity().trim() || null,
-        state: this.newState().trim() || null,
-      })
-      .subscribe({
-        next: (store) => {
-          this.stores.update((rows) =>
-            rows.some((r) => r.id === store.id) ? rows : [...rows, store],
-          );
-          this.newLabel.set('');
-          this.newCity.set('');
-          this.newState.set('');
-          this.flash(`Added ${store.label}.`);
-        },
-        error: (err) => this.error.set(this.message(err, 'Could not add that store.')),
-      });
-  }
-
-  protected startEdit(store: Store): void {
-    this.editingId.set(store.id);
-    this.draft.set({ ...store });
-    this.error.set(null);
-  }
-
-  protected cancelEdit(): void {
-    this.editingId.set(null);
-  }
-
-  protected patchDraft<K extends keyof Store>(key: K, value: Store[K]): void {
-    this.draft.update((d) => ({ ...d, [key]: value }));
-  }
-
-  protected saveStore(): void {
-    const id = this.editingId();
-    const draft = this.draft();
-    if (id == null || !draft.label?.trim()) return;
-
-    this.api
-      .updateStore(id, {
-        chain: draft.chain,
-        label: draft.label.trim(),
-        city: draft.city?.trim() || null,
-        state: draft.state?.trim() || null,
-      })
-      .subscribe({
-        next: (saved) => {
-          this.stores.update((rows) => rows.map((r) => (r.id === saved.id ? saved : r)));
-          this.editingId.set(null);
-          this.flash(`Saved ${saved.label}.`);
-        },
-        error: (err) => this.error.set(this.message(err, 'Could not save that store.')),
-      });
-  }
-
-  protected deleteStore(store: Store): void {
-    if (!globalThis.confirm(`Delete ${store.label}?`)) return;
-
-    this.api.deleteStore(store.id).subscribe({
-      next: () => {
-        this.stores.update((rows) => rows.filter((r) => r.id !== store.id));
-        this.editingId.set(null);
-        this.flash(`Deleted ${store.label}.`);
-      },
-      // A store with prices logged against it is refused, not cascaded, so the
-      // server's explanation is the useful thing to show.
-      error: (err) => this.error.set(this.message(err, 'Could not delete that store.')),
-    });
-  }
-
-  protected toggleRule(rule: TagRule): void {
-    this.api.updateTagRule(rule.id, { enabled: !rule.enabled }).subscribe({
-      next: (saved) => {
-        this.rules.update((rows) => rows.map((r) => (r.id === saved.id ? saved : r)));
-        this.flash(saved.enabled ? 'Rule enabled.' : 'Rule turned off.');
-      },
-      error: (err) => this.error.set(this.message(err, 'Could not update that rule.')),
-    });
-  }
-
-  protected rulesFor(chain: Chain): TagRule[] {
-    return this.rules().filter((r) => r.chain === chain);
-  }
-
-  protected priceLabel(rule: TagRule): string {
-    if (rule.matchType === 'PRICE_ENDING') return `ends in ${rule.pattern}`;
-    if (rule.matchType === 'MARKER') return rule.pattern.replaceAll('_', ' ').toLowerCase();
-    return `"${rule.pattern}"`;
-  }
-
-  private flash(message: string): void {
-    this.status.set(message);
-    setTimeout(() => this.status.set(null), 2500);
-  }
-
-  private message(err: unknown, fallback: string): string {
-    if ((err as { status?: number })?.status === 0) {
-      return 'Cannot reach the API at that address.';
-    }
-    return (err as { error?: { error?: string } })?.error?.error ?? fallback;
   }
 }
