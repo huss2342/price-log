@@ -1,0 +1,53 @@
+<main class="page">
+  <header class="page-head">
+    <h1>Sign up</h1>
+  </header>
+
+  <form class="panel stack" (submit)="submit($event)">
+    <div>
+      <label for="register-name">Display name (optional)</label>
+      <input
+        id="register-name"
+        type="text"
+        autocomplete="nickname"
+        autocapitalize="words"
+        autocorrect="off"
+        spellcheck="false"
+        [value]="displayName()"
+        (input)="setDisplayName($event)"
+      />
+    </div>
+    <div>
+      <label for="register-email">Email</label>
+      <input
+        id="register-email"
+        type="email"
+        inputmode="email"
+        autocomplete="email"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        [value]="email()"
+        (input)="setEmail($event)"
+      />
+    </div>
+    <div>
+      <label for="register-password">Password (at least 8 characters)</label>
+      <input
+        id="register-password"
+        type="password"
+        autocomplete="new-password"
+        [value]="password()"
+        (input)="setPassword($event)"
+      />
+    </div>
+    @if (error(); as e) {
+      <p class="notice notice-error">{{ e }}</p>
+    }
+    <button class="btn btn-primary btn-block" type="submit" [disabled]="!canSubmit()">
+      {{ busy() ? 'Creating account…' : 'Sign up' }}
+    </button>
+  </form>
+
+  <p class="notice">Already have an account? <a routerLink="/login">Log in</a>.</p>
+</main>

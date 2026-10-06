@@ -1,0 +1,163 @@
+<main class="page">
+  <header class="page-head">
+    <button class="btn btn-quiet back" routerLink="/settings">
+      <span aria-hidden="true">‹</span>
+      Settings
+    </button>
+    <h1>Stores</h1>
+  </header>
+
+  @if (stores.error()) {
+    <p class="notice notice-error">{{ stores.error() }}</p>
+  }
+
+  <div class="list">
+    @for (s of stores.stores(); track s.id) {
+      <div class="panel store">
+        @if (editingId() === s.id) {
+          <form class="stack" (ngSubmit)="saveRename(s.id)">
+            <div>
+              <label [for]="'rename-label-' + s.id">Name</label>
+              <input
+                [id]="'rename-label-' + s.id"
+                [ngModel]="editLabel()"
+                (ngModelChange)="editLabel.set($event)"
+                name="label"
+                autocapitalize="words"
+              />
+            </div>
+            <div class="grid-2">
+              <div>
+                <label [for]="'rename-city-' + s.id">City</label>
+                <input
+                  [id]="'rename-city-' + s.id"
+                  [ngModel]="editCity()"
+                  (ngModelChange)="editCity.set($event)"
+                  name="city"
+                  autocapitalize="words"
+                />
+              </div>
+              <div>
+                <label [for]="'rename-state-' + s.id">State</label>
+                <input
+                  [id]="'rename-state-' + s.id"
+                  [ngModel]="editState()"
+                  (ngModelChange)="editState.set($event)"
+                  name="state"
+                  maxlength="2"
+                  autocapitalize="characters"
+                  placeholder="MO"
+                />
+              </div>
+            </div>
+            @if (editError()) {
+              <p class="notice notice-error">{{ editError() }}</p>
+            }
+            <div class="row">
+              <button type="submit" class="btn btn-primary grow" [disabled]="saving()">Save</button>
+              <button type="button" class="btn" (click)="editingId.set(null)">Cancel</button>
+            </div>
+          </form>
+        } @else {
+          <div class="store-head">
+            <div>
+              <strong>{{ s.label }}</strong>
+              <p class="dim small">
+                {{ chainLabels[s.chain] }}
+                @if (place(s)) {
+                  · {{ place(s) }}
+                }
+                · {{ s.observationCount }} {{ s.observationCount === 1 ? 'price' : 'prices' }} logged
+              </p>
+            </div>
+            <div class="row">
+              <button
+                class="btn btn-quiet"
+                (click)="startRename(s)"
+                [attr.aria-label]="'Rename ' + s.label"
+              >
+                Rename
+              </button>
+              <button
+                class="btn btn-quiet btn-danger"
+                (click)="remove(s.id, s.label)"
+                [disabled]="deletingId() === s.id"
+                [attr.aria-label]="'Delete ' + s.label"
+              >
+                {{ deletingId() === s.id ? 'Deleting…' : 'Delete' }}
+              </button>
+            </div>
+          </div>
+          @if (deleteError()?.id === s.id) {
+            <p class="notice notice-error">{{ deleteError()!.message }}</p>
+          }
+        }
+      </div>
+    } @empty {
+      @if (!stores.loading()) {
+        <p class="empty">
+          <strong>No stores yet</strong>
+          Name the places you shop and the log reads "Costco — Manchester" instead of just "Costco".
+        </p>
+      }
+    }
+  </div>
+
+  <h2 class="section-title">Add a store</h2>
+  <form class="panel stack" (ngSubmit)="add()">
+    <div>
+      <label for="new-chain">Chain</label>
+      <select
+        id="new-chain"
+        name="chain"
+        [ngModel]="newChain()"
+        (ngModelChange)="newChain.set($event)"
+      >
+        @for (c of chains; track c) {
+          <option [value]="c">{{ chainLabels[c] }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label for="new-label">Name</label>
+      <input
+        id="new-label"
+        name="label"
+        placeholder="Manchester"
+        autocapitalize="words"
+        [ngModel]="newLabel()"
+        (ngModelChange)="newLabel.set($event)"
+      />
+    </div>
+    <div class="grid-2">
+      <div>
+        <label for="new-city">City</label>
+        <input
+          id="new-city"
+          name="city"
+          autocapitalize="words"
+          [ngModel]="newCity()"
+          (ngModelChange)="newCity.set($event)"
+        />
+      </div>
+      <div>
+        <label for="new-state">State</label>
+        <input
+          id="new-state"
+          name="state"
+          maxlength="2"
+          autocapitalize="characters"
+          placeholder="MO"
+          [ngModel]="newState()"
+          (ngModelChange)="newState.set($event)"
+        />
+      </div>
+    </div>
+    @if (addError()) {
+      <p class="notice notice-error">{{ addError() }}</p>
+    }
+    <button type="submit" class="btn btn-primary" [disabled]="adding()">
+      {{ adding() ? 'Adding…' : 'Add store' }}
+    </button>
+  </form>
+</main>

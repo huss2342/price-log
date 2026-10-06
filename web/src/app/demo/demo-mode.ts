@@ -4,8 +4,9 @@ const FORCED = 'pricelog.demo';
  * Whether this browser should see the sample log rather than the real one.
  *
  * <p>Read once, before Angular starts, because it decides which service backs
- * every screen. A device with a key is the owner's and gets real data; anything
- * else gets the demo, which is what a shared link lands on.
+ * every screen. A device with a key <em>or</em> a signed-in account is the
+ * owner's and gets real data; anything else gets the demo, which is what a
+ * shared link lands on.
  *
  * <p>?demo=1 forces it on so the owner can see what a visitor sees, and ?demo=0
  * clears that again. The choice sticks so a reload does not bounce back.
@@ -23,20 +24,27 @@ export function isDemoMode(): boolean {
   if (safeGet() === '1') {
     return true;
   }
-  return !storedApiKey();
+  return !storedCredential();
 }
 
 /**
- * Reads the key straight out of storage rather than through Settings, which
- * cannot be constructed before the injector exists.
+ * Reads the credentials straight out of storage rather than through the
+ * services, which cannot be constructed before the injector exists.
  */
-function storedApiKey(): string {
+function storedCredential(): string {
   if (new URLSearchParams(location.search).get('key')) {
     return 'pending';
   }
   try {
-    const raw = localStorage.getItem('pricelog.settings');
-    return raw ? (JSON.parse(raw).apiKey ?? '') : '';
+    const settings = localStorage.getItem('pricelog.settings');
+    if (settings && (JSON.parse(settings).apiKey ?? '')) {
+      return 'present';
+    }
+    const auth = localStorage.getItem('pricelog.auth');
+    if (auth && (JSON.parse(auth).token ?? '')) {
+      return 'present';
+    }
+    return '';
   } catch {
     return '';
   }

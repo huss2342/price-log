@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { Api } from '../core/api';
-import type { DealsView, Observation, TagRule } from '../core/models';
+import type { DealsView, Observation, Store, TagRule } from '../core/models';
 import { DEMO_DEALS, DEMO_ENTRIES } from './demo-data';
 
 /**
@@ -49,6 +49,23 @@ export class DemoApi extends Api {
   }
 
   override updateTagRule(): Observable<TagRule> {
+    return this.readOnly();
+  }
+
+  // The demo has no stores; the picker falls back to the chain alone.
+  override stores(): Observable<Store[]> {
+    return of([]);
+  }
+
+  override createStore(): Observable<Store> {
+    return this.readOnly();
+  }
+
+  override updateStore(): Observable<Store> {
+    return this.readOnly();
+  }
+
+  override deleteStore(): Observable<void> {
     return this.readOnly();
   }
 

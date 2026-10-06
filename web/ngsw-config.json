@@ -26,5 +26,17 @@
         ]
       }
     }
+  ],
+  "dataGroups": [
+    {
+      "name": "api-observations",
+      "urls": ["/api/observations*"],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "timeout": "10s",
+        "maxAge": "1h",
+        "maxSize": 50
+      }
+    }
   ]
 }

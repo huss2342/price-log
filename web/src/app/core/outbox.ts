@@ -12,6 +12,8 @@ export interface PendingCapture {
   blob: Blob;
   filename: string;
   chain?: Chain | null;
+  /** The exact store to log at; the API prefers it over the chain. */
+  storeId?: number | null;
   queuedAt: number;
   attempts: number;
   lastError?: string;
@@ -47,10 +49,10 @@ export class Outbox {
     addEventListener('offline', () => this.online.set(false));
   }
 
-  async enqueue(blob: Blob, filename: string, chain: Chain | null): Promise<void> {
+  async enqueue(blob: Blob, filename: string, chain: Chain | null, storeId: number | null = null): Promise<void> {
     const db = await this.open();
     await this.tx(db, 'readwrite', (store) =>
-      store.add({ blob, filename, chain, queuedAt: Date.now(), attempts: 0 }),
+      store.add({ blob, filename, chain, storeId, queuedAt: Date.now(), attempts: 0 }),
     );
     await this.refreshCount();
   }
@@ -78,7 +80,9 @@ export class Outbox {
       for (const item of await this.list()) {
         try {
           const file = new File([item.blob], item.filename, { type: item.blob.type });
-          const observation = await firstValueFrom(this.api.capture(file, item.chain ?? null));
+          const observation = await firstValueFrom(
+            this.api.capture(file, item.chain ?? null, item.storeId ?? null),
+          );
           saved.push(observation);
           this.log.upsert(observation);
           await this.remove(item.id);

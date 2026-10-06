@@ -3,15 +3,19 @@
     <h1>Snap</h1>
   </header>
 
-  <div class="pills" role="group" aria-label="Store">
-    <button class="pill" [attr.aria-pressed]="settings.chain() === null" (click)="pick(null)">
-      Auto
-    </button>
-    @for (chain of chains; track chain) {
-      <button class="pill" [attr.aria-pressed]="settings.chain() === chain" (click)="pick(chain)">
-        {{ chainLabels[chain] }}
-      </button>
-    }
+  <div class="store-row">
+    <select
+      class="store-select"
+      aria-label="Store"
+      [value]="selectedStoreId() ?? ''"
+      (change)="pickStore($event)"
+    >
+      <option value="">Auto — let the tag decide</option>
+      @for (s of stores.stores(); track s.id) {
+        <option [value]="s.id">{{ s.label }} ({{ chainLabels[s.chain] }})</option>
+      }
+    </select>
+    <a routerLink="/stores" class="btn btn-quiet manage">Manage</a>
   </div>
 
   <label class="shutter">

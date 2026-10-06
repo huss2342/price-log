@@ -33,3 +33,13 @@ summary::-webkit-details-marker {
 .notice .btn {
   min-height: 32px;
 }
+
+/* Smaller heading inside an account panel section, matching .section-title's register. */
+.subhead {
+  margin: 4px 2px 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}

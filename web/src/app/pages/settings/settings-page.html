@@ -12,6 +12,91 @@
     </p>
   }
 
+  <h2 class="section-title">Account</h2>
+  <div class="panel stack">
+    @if (auth.user(); as me) {
+      <div>
+        <strong>{{ me.displayName || me.email }}</strong>
+        @if (me.displayName) {
+          <div class="dim">{{ me.email }}</div>
+        }
+      </div>
+      <button class="btn btn-quiet" (click)="logout()">Log out</button>
+
+      <h3 class="subhead">Change password</h3>
+      <div>
+        <label for="pw-current">Current password</label>
+        <input
+          id="pw-current"
+          type="password"
+          autocomplete="current-password"
+          [value]="currentPassword()"
+          (input)="setCurrentPassword($event)"
+        />
+      </div>
+      <div>
+        <label for="pw-new">New password (at least 8 characters)</label>
+        <input
+          id="pw-new"
+          type="password"
+          autocomplete="new-password"
+          [value]="newPassword()"
+          (input)="setNewPassword($event)"
+        />
+      </div>
+      <div>
+        <label for="pw-confirm">Confirm new password</label>
+        <input
+          id="pw-confirm"
+          type="password"
+          autocomplete="new-password"
+          [value]="confirmPassword()"
+          (input)="setConfirmPassword($event)"
+        />
+      </div>
+      @if (pwNotice(); as n) {
+        <p class="notice" [class.notice-error]="!n.ok">{{ n.text }}</p>
+      }
+      <button class="btn" [disabled]="pwBusy()" (click)="changePassword()">
+        {{ pwBusy() ? 'Changing…' : 'Change password' }}
+      </button>
+
+      <h3 class="subhead">Your data</h3>
+      <div>
+        <button class="btn" [disabled]="exportBusy()" (click)="exportData()">
+          {{ exportBusy() ? 'Preparing…' : 'Export my data' }}
+        </button>
+        @if (exportNotice(); as n) {
+          <p class="notice" [class.notice-error]="!n.ok">{{ n.text }}</p>
+        }
+      </div>
+
+      <h3 class="subhead">Danger zone</h3>
+      <div>
+        <button class="btn btn-danger" [disabled]="deleteBusy()" (click)="deleteAccount()">
+          {{
+            deleteBusy()
+              ? 'Deleting…'
+              : deleteArmed()
+                ? 'Tap again to delete everything'
+                : 'Delete account'
+          }}
+        </button>
+        <p class="dim">
+          Deletes your account and every price you logged. This cannot be undone.
+        </p>
+        @if (deleteError(); as e) {
+          <p class="notice notice-error">{{ e }}</p>
+        }
+      </div>
+    } @else {
+      <p class="notice">
+        <a routerLink="/login">Log in</a> or <a routerLink="/register">sign up</a> for your own
+        account.
+      </p>
+    }
+  </div>
+
   <h2 class="section-title">Connection</h2>
   <div class="panel stack">
     <div>
@@ -44,6 +129,13 @@
       <p class="notice" [class.notice-error]="!r.ok">{{ r.text }}</p>
     }
   </div>
+
+  @if (settings.canWrite() || auth.isLoggedIn()) {
+    <h2 class="section-title">Stores</h2>
+    <div class="panel">
+      <a routerLink="/stores" class="btn btn-block">Manage stores</a>
+    </div>
+  }
 
   @if (rules().length) {
     <h2 class="section-title">How tags are read</h2>

@@ -7,6 +7,7 @@ import type {
   DealsView,
   Observation,
   ObservationUpdate,
+  Store,
   TagRule,
 } from './models';
 
@@ -19,11 +20,17 @@ export class Api {
     return `${this.settings.apiBase().replace(/\/+$/, '')}${path}`;
   }
 
-  /** @param chain where the photo was taken, or null to let the tag's design say */
-  capture(photo: File, chain: Chain | null): Observable<Observation> {
+  /**
+   * @param chain where the photo was taken, or null to let the tag's design say
+   * @param storeId the exact store to log at; the API prefers it over chain
+   */
+  capture(photo: File, chain: Chain | null, storeId: number | null = null): Observable<Observation> {
     const form = new FormData();
     form.append('photo', photo, photo.name || 'tag.jpg');
     let params = new HttpParams();
+    if (storeId != null) {
+      params = params.set('storeId', String(storeId));
+    }
     if (chain) {
       params = params.set('chain', chain);
     }
@@ -58,6 +65,26 @@ export class Api {
     return this.http.put<TagRule>(this.url(`/api/tag-rules/${id}`), update);
   }
 
+  /** The user's named stores, ordered by chain then label. */
+  stores(): Observable<Store[]> {
+    return this.http.get<Store[]>(this.url('/api/stores'));
+  }
+
+  createStore(data: { chain: Chain; label: string; city?: string; state?: string }): Observable<Store> {
+    return this.http.post<Store>(this.url('/api/stores'), data);
+  }
+
+  updateStore(
+    id: number,
+    data: { label?: string; city?: string | null; state?: string | null },
+  ): Observable<Store> {
+    return this.http.put<Store>(this.url(`/api/stores/${id}`), data);
+  }
+
+  deleteStore(id: number): Observable<void> {
+    return this.http.delete<void>(this.url(`/api/stores/${id}`));
+  }
+
   /**
    * Photos come back as bytes rather than as a URL an <img> can point at, so
    * the key travels in a header like every other call. It used to ride as a
@@ -67,5 +94,13 @@ export class Api {
    */
   photoBlob(key: string): Observable<Blob> {
     return this.http.get(this.url(`/api/photos/${key}`), { responseType: 'blob' });
+  }
+
+  /**
+   * The user's whole dataset as a JSON download: stores, observations with
+   * their products, tag rules, and the watchlist.
+   */
+  exportData(): Observable<Blob> {
+    return this.http.get(this.url('/api/export'), { responseType: 'blob' });
   }
 }

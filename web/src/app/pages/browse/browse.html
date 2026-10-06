@@ -34,6 +34,23 @@
         }
       </div>
     }
+
+    @if (chains().length > 1) {
+      <div class="pills" role="group" aria-label="Chain">
+        <button class="pill" [attr.aria-pressed]="chain() === null" (click)="chain.set(null)">
+          All stores
+        </button>
+        @for (c of chains(); track c.chain) {
+          <button
+            class="pill"
+            [attr.aria-pressed]="chain() === c.chain"
+            (click)="toggleChain(c.chain)"
+          >
+            {{ c.label }}<span class="count">{{ c.count }}</span>
+          </button>
+        }
+      </div>
+    }
   }
 
   @if (log.syncError() && !log.products().length) {

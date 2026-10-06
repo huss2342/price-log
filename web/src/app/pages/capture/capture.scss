@@ -1,3 +1,22 @@
+/* The store picker sits where the chain pills used to: the common case is
+   still no tap, since the remembered store is pre-selected. */
+.store-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.store-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.manage {
+  flex: none;
+  min-height: 36px;
+}
+
 /* The primary action, big enough to hit without looking at the screen. */
 .shutter {
   display: flex;

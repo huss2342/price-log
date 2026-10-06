@@ -10,6 +10,18 @@ export type SaleSignal =
 
 export type BaseUnit = 'OZ' | 'FL_OZ' | 'COUNT' | 'NONE';
 
+/** A named place a chain operates, as the user calls it: "Costco — Manchester". */
+export interface Store {
+  id: number;
+  chain: Chain;
+  label: string;
+  city: string | null;
+  state: string | null;
+  createdAt: string;
+  updatedAt: string;
+  observationCount: number;
+}
+
 /** One price tag, seen at one chain, on one day. */
 export interface Observation {
   id: number;
@@ -28,6 +40,9 @@ export interface Observation {
   baseUnit: BaseUnit;
   baseQuantity: number | null;
   chain: Chain;
+  /** The named store chosen at capture, when one was chosen. Additive: an older API simply omits it. */
+  storeId?: number | null;
+  storeLabel?: string | null;
   observedOn: string;
   priceCents: number;
   regularPriceCents: number | null;

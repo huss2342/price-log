@@ -1,0 +1,40 @@
+<main class="page">
+  <header class="page-head">
+    <h1>Log in</h1>
+  </header>
+
+  <form class="panel stack" (submit)="submit($event)">
+    <div>
+      <label for="login-email">Email</label>
+      <input
+        id="login-email"
+        type="email"
+        inputmode="email"
+        autocomplete="email"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        [value]="email()"
+        (input)="setEmail($event)"
+      />
+    </div>
+    <div>
+      <label for="login-password">Password</label>
+      <input
+        id="login-password"
+        type="password"
+        autocomplete="current-password"
+        [value]="password()"
+        (input)="setPassword($event)"
+      />
+    </div>
+    @if (error(); as e) {
+      <p class="notice notice-error">{{ e }}</p>
+    }
+    <button class="btn btn-primary btn-block" type="submit" [disabled]="!canSubmit()">
+      {{ busy() ? 'Logging in…' : 'Log in' }}
+    </button>
+  </form>
+
+  <p class="notice">No account yet? <a routerLink="/register">Sign up</a>.</p>
+</main>

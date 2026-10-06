@@ -6,6 +6,19 @@
 
 <router-outlet />
 
+<div class="toasts" aria-live="polite">
+  @for (t of toast.items(); track t.id) {
+    <div class="toast toast-{{ t.kind }}" (click)="toast.dismiss(t.id)">
+      <span>{{ t.message }}</span>
+      @if (t.action) {
+        <button class="btn btn-quiet toast-action" (click)="runToastAction(t, $event)">
+          {{ t.action.label }}
+        </button>
+      }
+    </div>
+  }
+</div>
+
 <nav class="tabs" aria-label="Main">
   @for (tab of tabs(); track tab.path) {
     <a [routerLink]="tab.path" routerLinkActive="active" ariaCurrentWhenActive="page">

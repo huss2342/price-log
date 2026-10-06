@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { LogStore } from '../../core/log-store';
-import { CATEGORIES, categoryLabel } from '../../core/models';
+import { CATEGORIES, CHAIN_LABELS, CHAINS, categoryLabel, type Chain } from '../../core/models';
 import { productCard, type CardContext, type CardView, type Chip } from '../../shared/cards';
 import { Icon } from '../../shared/icon';
 import { ItemCard } from '../../shared/item-card';
@@ -35,6 +35,7 @@ export class BrowsePage {
 
   protected readonly query = signal('');
   protected readonly category = signal<string | null>(null);
+  protected readonly chain = signal<Chain | null>(null);
 
   /** Only categories something has actually been logged in. */
   protected readonly categories = computed(() => {
@@ -49,14 +50,29 @@ export class BrowsePage {
     }));
   });
 
+  /** Only chains something has actually been logged at. */
+  protected readonly chains = computed(() => {
+    const counts = new Map<Chain, number>();
+    for (const p of this.log.products()) {
+      counts.set(p.chain, (counts.get(p.chain) ?? 0) + 1);
+    }
+    return CHAINS.filter((chain) => counts.has(chain)).map((chain) => ({
+      chain,
+      label: CHAIN_LABELS[chain],
+      count: counts.get(chain) ?? 0,
+    }));
+  });
+
   protected readonly sections = computed<Section[]>(() => {
     const needle = this.query().trim().toLowerCase();
     const picked = this.category();
+    const chainPicked = this.chain();
     const ctx: CardContext = { today: this.log.today(), showChain: this.log.multiChain() };
 
     const byCategory = new Map<string, Map<string, ProductSummary[]>>();
     for (const p of this.log.products()) {
       if (picked && p.category !== picked) continue;
+      if (chainPicked && p.chain !== chainPicked) continue;
       if (needle && !matches(p, needle)) continue;
       const groups = byCategory.get(p.category) ?? new Map<string, ProductSummary[]>();
       groups.set(p.comparisonKey, [...(groups.get(p.comparisonKey) ?? []), p]);
@@ -74,6 +90,10 @@ export class BrowsePage {
 
   protected toggle(category: string): void {
     this.category.update((current) => (current === category ? null : category));
+  }
+
+  protected toggleChain(chain: Chain): void {
+    this.chain.update((current) => (current === chain ? null : chain));
   }
 
   protected search(event: Event): void {

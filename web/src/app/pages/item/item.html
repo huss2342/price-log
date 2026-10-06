@@ -90,12 +90,13 @@
               (ngModelChange)="patch('saleEndsOn', $event)" />
           </div>
           <div>
-            <label for="f-chain">Store</label>
+            <label for="f-chain">Chain</label>
             <select id="f-chain" name="chain" [ngModel]="d.chain" (ngModelChange)="patch('chain', $event)">
               @for (c of chains; track c) {
                 <option [value]="c">{{ chainLabels[c] }}</option>
               }
             </select>
+            <p class="hint">Moving a price to another named store is not supported yet.</p>
           </div>
         </div>
 
@@ -218,7 +219,7 @@
     <div class="panel stack">
       <dl class="facts small">
         <dt>Seen</dt>
-        <dd>{{ date(e.observedOn) }}, {{ chainLabels[e.chain] }}</dd>
+        <dd>{{ date(e.observedOn) }}, {{ e.storeLabel ?? chainLabels[e.chain] }}</dd>
         @if (e.itemNumber) {
           <dt>Item</dt>
           <dd class="num">{{ e.itemNumber }}</dd>
