@@ -93,6 +93,18 @@ else
   echo "==> Generated a new API key"
 fi
 
+# Signs the account JWTs. Generated once and reused like the API key, so
+# signed-in devices are not logged out on every redeploy. Rotating it signs
+# everyone out at once.
+if EXISTING_JWT=$(az containerapp secret show -n "$APP" -g "$RG" --secret-name jwt-secret \
+     --query value -o tsv 2>/dev/null); then
+  JWT_SECRET="$EXISTING_JWT"
+  echo "==> Reusing the existing JWT secret"
+else
+  JWT_SECRET=$(openssl rand -hex 32)
+  echo "==> Generated a new JWT secret"
+fi
+
 echo "==> Container Apps environment"
 # Guarded rather than create-and-ignore-the-error: with no --logs-workspace-id,
 # `env create` provisions a fresh Log Analytics workspace *before* it discovers
@@ -158,7 +170,8 @@ az containerapp secret set -n "$APP" -g "$RG" --secrets \
   "db-password=$DATABASE_PASSWORD" \
   "openai-key=$OPENAI_KEY" \
   "storage-connection=$STORAGE_CONNECTION" \
-  "app-api-key=$API_KEY" -o none
+  "app-api-key=$API_KEY" \
+  "jwt-secret=$JWT_SECRET" -o none
 
 # Container Apps only starts new replicas when the revision spec changes, and
 # a secret's *value* is not part of that spec -- so rotating the API key and
@@ -166,7 +179,7 @@ az containerapp secret set -n "$APP" -g "$RG" --secrets \
 # live. Naming the revision after a hash of the resolved config fixes that: an
 # unchanged config yields the same suffix and no new revision, while a rotated
 # key yields a different one and forces every replica to re-resolve.
-CONFIG_HASH=$(printf '%s' "$IMAGE|$API_KEY|$DATABASE_URL|$OPENAI_ENDPOINT" \
+CONFIG_HASH=$(printf '%s' "$IMAGE|$API_KEY|$JWT_SECRET|$DATABASE_URL|$OPENAI_ENDPOINT" \
   | { sha256sum 2>/dev/null || shasum -a 256; } | cut -c1-10)
 
 # The front end origin is not known until the Static Web App exists, so CORS is
@@ -188,6 +201,7 @@ az containerapp update -n "$APP" -g "$RG" \
     "STORAGE_CONNECTION_STRING=secretref:storage-connection" \
     "STORAGE_CONTAINER=$STORAGE_CONTAINER" \
     "APP_API_KEY=secretref:app-api-key" \
+    "JWT_SECRET=secretref:jwt-secret" \
   -o none
 
 echo "==> Static Web App for the PWA"
@@ -219,6 +233,8 @@ Deployed.
 The site is public, and is an empty shell: it carries no key and can read
 nothing until one is supplied. The API key is the only thing that grants access
 to your data, so treat the link below the way you would treat a password.
+Other people can register their own accounts from the app's sign-up page;
+each account's log is private to it.
 
 Open this once on each device and it configures itself:
 
