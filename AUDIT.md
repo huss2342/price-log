@@ -117,5 +117,45 @@ localStorage. Demo mode serves bundled sample data with no key.
 - `DELETE /api/tag-rules/{id}` → 204; 404 if not the user's.
 
 ### Observations
-- `GET /api/observations?page=0&size=50` → 
-...[truncated 4107 chars]
+- `GET /api/observations?page=0&size=50` → `{content:[...], page, size,
+  totalElements, totalPages}`; no params → full array as today (backward compatible).
+- `ObservationView` keeps its shape (already had `storeId`/`chain`/`storeLabel`);
+  `watched`/`targetPriceCents`/`meetsTarget` now resolve per user from
+  `user_product_watch`.
+- Validation: `ObservationUpdate` — `sizeValue`/`packCount` > 0, `observedOn` not
+  in the future (422); `WatchRequest` — `targetPriceCents` >= 0 (422), null body
+  guarded; tag-rule create/update — `priority` >= 0 (422).
+- `POST /api/captures`: `storeId` is now a real store id (404 if not the user's;
+  wins over `chain`); `photo.getContentType()` null tolerated.
+
+### Deals
+- `POST /api/deals/refresh` → same as `GET /api/deals?force=true` (kept as a
+  deprecated alias).
+
+### Export
+- `GET /api/export` → `200` JSON download (`Content-Disposition: attachment;
+  filename="price-log-export.json"`): `{exportedAt, user:{email,displayName},
+  stores[], observations[] (with embedded product fields), tagRules[],
+  watchlist[]}`. Auth required even in public-read mode. Photo bytes are NOT
+  included (future work).
+
+## Frontend contract (implemented)
+- `core/auth.ts`: `Auth` service — `user()`/`token()` signals, `register`,
+  `login`, `logout`, `loadMe`, `changePassword`, `deleteAccount`; token in
+  localStorage `pricelog.auth`.
+- Interceptor: `Authorization: Bearer` when token present, else legacy
+  `X-API-Key`, else nothing (demo).
+- Routes `/login`, `/register` (inverse-guarded); `writerGuard` allows token OR key.
+- Settings account section: profile, change password, export data, delete account.
+- `core/stores.ts` + `/stores` page (list/add/rename/delete); capture page store
+  picker sending `storeId`; `observationCount` shown per store.
+- `core/toast.ts` + host in `app.html`; SW update prompt when tab visible;
+  ngsw `dataGroups` for `GET /api/observations*`; chain filter pills on browse.
+
+## Out of scope (future work)
+- Password reset via email (no mail infrastructure), email verification, social login.
+- Photo bytes in export; bulk import endpoint.
+- App-store deployment, payment processing, i18n.
+- Per-user rate limiting / OpenAI spend caps (anonymous limiter exists; authed
+  endpoints unthrottled — noted as the next ops item).
+- Postgres integration tests in CI (H2 only today).

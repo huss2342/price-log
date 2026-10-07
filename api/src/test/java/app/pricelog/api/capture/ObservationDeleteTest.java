@@ -11,6 +11,7 @@ import app.pricelog.api.domain.SaleSignal;
 import app.pricelog.api.domain.Store;
 import app.pricelog.api.repo.PriceObservationRepository;
 import app.pricelog.api.repo.ProductRepository;
+import app.pricelog.api.security.UserRepository;
 import app.pricelog.api.storage.PhotoStore;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -43,6 +44,16 @@ class ObservationDeleteTest {
     @Autowired
     PhotoStore photos;
 
+    @Autowired
+    UserRepository users;
+
+    private Long ownerId;
+
+    @org.junit.jupiter.api.BeforeEach
+    void resolveOwner() {
+        ownerId = users.findFirstByOrderByIdAsc().orElseThrow().getId();
+    }
+
     @Test
     void deletingAnObservationAlsoDeletesItsPhoto() {
         String photoKey = photos.store("not really a jpeg".getBytes(), "image/jpeg", "tag");
@@ -68,7 +79,7 @@ class ObservationDeleteTest {
     }
 
     private PriceObservation observationOn(String photoKey, String suffix) {
-        Store store = stores.forChain(Chain.COSTCO);
+        Store store = stores.forChain(ownerId, Chain.COSTCO);
 
         Product product = new Product();
         product.setDisplayName("TEST ITEM");
@@ -80,6 +91,7 @@ class ObservationDeleteTest {
         product = products.save(product);
 
         PriceObservation observation = new PriceObservation();
+        observation.setUserId(ownerId);
         observation.setProduct(product);
         observation.setStore(store);
         observation.setObservedOn(LocalDate.now());

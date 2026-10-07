@@ -3,6 +3,7 @@ package app.pricelog.api.query;
 import app.pricelog.api.domain.*;
 import app.pricelog.api.repo.PriceObservationRepository;
 import app.pricelog.api.repo.ProductRepository;
+import app.pricelog.api.security.UserContext;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -26,10 +27,13 @@ public class PriceQueryService {
 
     private final ProductRepository products;
     private final PriceObservationRepository observations;
+    private final UserContext users;
 
-    public PriceQueryService(ProductRepository products, PriceObservationRepository observations) {
+    public PriceQueryService(ProductRepository products, PriceObservationRepository observations,
+                             UserContext users) {
         this.products = products;
         this.observations = observations;
+        this.users = users;
     }
 
     @Transactional(readOnly = true)
@@ -37,24 +41,28 @@ public class PriceQueryService {
         if (query == null || query.isBlank()) {
             return List.of();
         }
-        return toGroups(products.search(query.trim()));
+        // The catalog is shared; a user only sees the products they have logged.
+        return toGroups(users.userId(), products.searchForUser(query.trim(), users.userId()));
     }
 
     @Transactional(readOnly = true)
     public List<CompareGroup> byCategory(Category category) {
-        return toGroups(products.findByCategoryOrderByDisplayNameAsc(category));
+        Long userId = users.userId();
+        return toGroups(userId, products.findByCategoryForUser(category, userId));
     }
 
     @Transactional(readOnly = true)
     public Optional<CompareGroup> byComparisonKey(String comparisonKey) {
-        List<Product> matches = products.findByComparisonKey(comparisonKey);
-        return matches.isEmpty() ? Optional.empty() : Optional.of(buildGroup(matches));
+        Long userId = users.userId();
+        List<Product> matches = products.findByComparisonKeyForUser(comparisonKey, userId);
+        return matches.isEmpty() ? Optional.empty() : Optional.of(buildGroup(userId, matches));
     }
 
     /** Every observation for one product, newest first, for the price history chart. */
     @Transactional(readOnly = true)
     public List<StoreOffer> history(Long productId) {
-        List<PriceObservation> rows = observations.findForProducts(List.of(productId));
+        Long userId = users.userId();
+        List<PriceObservation> rows = observations.findForProducts(userId, List.of(productId));
         BigDecimal best = cheapestUnitPrice(rows);
         return rows.stream().map(o -> toOffer(o, best)).toList();
     }
@@ -63,7 +71,7 @@ public class PriceQueryService {
      * Groups the given products by comparison key, then resolves each group to
      * one offer per store: the newest observation for that product and store.
      */
-    private List<CompareGroup> toGroups(List<Product> matches) {
+    private List<CompareGroup> toGroups(Long userId, List<Product> matches) {
         if (matches.isEmpty()) {
             return List.of();
         }
@@ -71,17 +79,17 @@ public class PriceQueryService {
                 .collect(Collectors.groupingBy(Product::getComparisonKey, LinkedHashMap::new, Collectors.toList()));
 
         return byKey.values().stream()
-                .map(this::buildGroup)
+                .map(group -> buildGroup(userId, group))
                 .filter(group -> !group.offers().isEmpty())
                 .sorted(Comparator.comparing(CompareGroup::label))
                 .toList();
     }
 
-    private CompareGroup buildGroup(List<Product> groupProducts) {
+    private CompareGroup buildGroup(Long userId, List<Product> groupProducts) {
         Map<Long, Product> productsById = groupProducts.stream()
                 .collect(Collectors.toMap(Product::getId, p -> p));
 
-        List<PriceObservation> rows = observations.findForProducts(productsById.keySet());
+        List<PriceObservation> rows = observations.findForProducts(userId, productsById.keySet());
         List<PriceObservation> latest = latestPerProductAndStore(rows);
         BigDecimal best = cheapestUnitPrice(latest);
 

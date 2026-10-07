@@ -24,11 +24,13 @@ public class TagRuleEngine {
     }
 
     @Transactional(readOnly = true)
-    public TagVerdict evaluate(Chain chain, int priceCents, List<String> markers, String rawText) {
-        return evaluate(chain, priceCents, markers, rawText, false);
+    public TagVerdict evaluate(Long userId, Chain chain, int priceCents, List<String> markers,
+                               String rawText) {
+        return evaluate(userId, chain, priceCents, markers, rawText, false);
     }
 
     /**
+     * @param userId         whose tag conventions apply; every account keeps its own set
      * @param priceIsReduced the tag itself shows a saving -- a regular price or an
      *                       amount off printed beside the price. That outranks
      *                       anything the price ending implies: Costco's instant
@@ -36,13 +38,13 @@ public class TagRuleEngine {
      *                       otherwise means an everyday price.
      */
     @Transactional(readOnly = true)
-    public TagVerdict evaluate(Chain chain, int priceCents, List<String> markers, String rawText,
-                               boolean priceIsReduced) {
+    public TagVerdict evaluate(Long userId, Chain chain, int priceCents, List<String> markers,
+                               String rawText, boolean priceIsReduced) {
         String haystack = rawText == null ? "" : rawText.toUpperCase(Locale.ROOT);
         List<String> upperMarkers = markers.stream().map(m -> m.toUpperCase(Locale.ROOT)).toList();
 
         List<TagRule> matched = new ArrayList<>();
-        for (TagRule rule : rules.findByChainAndEnabledTrueOrderByPriorityAsc(chain)) {
+        for (TagRule rule : rules.findByUserIdAndChainAndEnabledTrueOrderByPriorityAsc(userId, chain)) {
             if (priceIsReduced && rule.getSignal() == SaleSignal.REGULAR) {
                 continue;
             }

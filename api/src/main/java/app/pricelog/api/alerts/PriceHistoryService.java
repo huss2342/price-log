@@ -25,14 +25,14 @@ public class PriceHistoryService {
      * now. Call before saving, while "previous" still means previous.
      */
     @Transactional(readOnly = true)
-    public void attachHistory(PriceObservation observation) {
+    public void attachHistory(Long userId, PriceObservation observation) {
         Long productId = observation.getProduct().getId();
         if (productId == null) {
             return;
         }
 
         List<PriceObservation> history =
-                observations.findByProductIdOrderByObservedOnDescIdDesc(productId);
+                observations.findByUserIdAndProductIdOrderByObservedOnDescIdDesc(userId, productId);
         if (history.isEmpty()) {
             return;
         }
@@ -40,6 +40,6 @@ public class PriceHistoryService {
         PriceObservation previous = history.getFirst();
         observation.setPreviousPriceCents(previous.getPriceCents());
         observation.setPreviousObservedOn(previous.getObservedOn());
-        observation.setLowestBeforeCents(observations.findLowestPriceCents(productId));
+        observation.setLowestBeforeCents(observations.findLowestPriceCents(userId, productId));
     }
 }

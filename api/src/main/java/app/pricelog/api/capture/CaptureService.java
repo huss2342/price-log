@@ -5,11 +5,13 @@ import app.pricelog.api.domain.*;
 import app.pricelog.api.extract.*;
 import app.pricelog.api.repo.PriceObservationRepository;
 import app.pricelog.api.repo.StoreRepository;
+import app.pricelog.api.security.UserContext;
 import app.pricelog.api.storage.PhotoStore;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.NoSuchElementException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,7 @@ public class CaptureService {
     private final StoreResolver storeResolver;
     private final PriceObservationRepository observations;
     private final PriceHistoryService priceHistory;
+    private final UserContext users;
     private final ObjectMapper mapper;
 
     public CaptureService(PhotoStore photos,
@@ -49,6 +52,7 @@ public class CaptureService {
                           StoreResolver storeResolver,
                           PriceObservationRepository observations,
                           PriceHistoryService priceHistory,
+                          UserContext users,
                           ObjectMapper mapper) {
         this.photos = photos;
         this.extractor = extractor;
@@ -58,12 +62,15 @@ public class CaptureService {
         this.storeResolver = storeResolver;
         this.observations = observations;
         this.priceHistory = priceHistory;
+        this.users = users;
         this.mapper = mapper;
     }
 
     /**
-     * @param chain   the chain the shopper picked, or null to read it off the tag
-     * @param storeId the older way of picking, used only when chain is null
+     * @param chain   the chain the shopper picked; resolved through the user's
+     *                own default store for that chain
+     * @param storeId an exact store to log at. Must belong to the current user;
+     *                when both are given, this wins over the chain.
      */
     @Transactional
     public CaptureResult capture(byte[] imageBytes,
@@ -72,9 +79,16 @@ public class CaptureService {
                                  Long storeId,
                                  LocalDate observedOn) {
 
-        Chain picked = chain != null || storeId == null
-                ? chain
-                : stores.findById(storeId).map(Store::getChain).orElse(null);
+        Long userId = users.userId();
+
+        // An explicit store skips resolution entirely; it has to be the user's.
+        Store store = null;
+        Chain picked = chain;
+        if (storeId != null) {
+            store = stores.findByIdAndUserId(storeId, userId)
+                    .orElseThrow(() -> new NoSuchElementException("No store " + storeId));
+            picked = store.getChain();
+        }
 
         ExtractedTag tag = extractor.extract(imageBytes, contentType, picked == null ? null : picked.name());
 
@@ -89,8 +103,10 @@ public class CaptureService {
         // strand the file with no row pointing at it. Undo it on rollback.
         deletePhotoIfRolledBack(photoKey);
 
-        Store store = storeResolver.forChain(
-                picked != null ? picked : Enums.parseOr(Chain.class, tag.storeChain(), Chain.OTHER));
+        if (store == null) {
+            store = storeResolver.forChain(
+                    userId, picked != null ? picked : Enums.parseOr(Chain.class, tag.storeChain(), Chain.OTHER));
+        }
 
         Product product = productResolver.resolve(tag);
 
@@ -101,9 +117,10 @@ public class CaptureService {
                 || (tag.savingsAmount() != null && tag.savingsAmount().signum() > 0);
 
         TagVerdict verdict = ruleEngine.evaluate(
-                store.getChain(), priceCents, tag.markersOrEmpty(), tag.rawText(), tagShowsSaving);
+                userId, store.getChain(), priceCents, tag.markersOrEmpty(), tag.rawText(), tagShowsSaving);
 
         PriceObservation observation = new PriceObservation();
+        observation.setUserId(userId);
         observation.setProduct(product);
         observation.setStore(store);
         observation.setObservedOn(observedOn == null ? LocalDate.now() : observedOn);
@@ -124,7 +141,7 @@ public class CaptureService {
         observation.setAdvice(verdict.advice());
 
         // Must run before the save, while "previous" still excludes this sighting.
-        priceHistory.attachHistory(observation);
+        priceHistory.attachHistory(userId, observation);
 
         observations.save(observation);
 

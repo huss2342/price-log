@@ -32,9 +32,9 @@ public class SaleCycleService {
     }
 
     @Transactional(readOnly = true)
-    public SaleCycle forProduct(Long productId) {
+    public SaleCycle forProduct(Long userId, Long productId) {
         List<PriceObservation> history =
-                observations.findByProductIdOrderByObservedOnDescIdDesc(productId);
+                observations.findByUserIdAndProductIdOrderByObservedOnDescIdDesc(userId, productId);
 
         // Oldest first, keeping only the start of each distinct sale.
         List<LocalDate> saleStarts = new ArrayList<>();

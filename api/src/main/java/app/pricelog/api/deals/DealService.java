@@ -7,6 +7,7 @@ import app.pricelog.api.domain.PriceObservation;
 import app.pricelog.api.repo.DealRefreshRepository;
 import app.pricelog.api.repo.DealRepository;
 import app.pricelog.api.repo.PriceObservationRepository;
+import app.pricelog.api.security.UserContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -37,17 +38,20 @@ public class DealService {
     private final DealRepository deals;
     private final DealRefreshRepository refreshes;
     private final PriceObservationRepository observations;
+    private final UserContext users;
     private final Duration maxAge;
 
     public DealService(CostcoDealsFetcher fetcher,
                        DealRepository deals,
                        DealRefreshRepository refreshes,
                        PriceObservationRepository observations,
+                       UserContext users,
                        @Value("${pricelog.deals.max-age-hours:24}") long maxAgeHours) {
         this.fetcher = fetcher;
         this.deals = deals;
         this.refreshes = refreshes;
         this.observations = observations;
+        this.users = users;
         this.maxAge = Duration.ofHours(maxAgeHours);
     }
 
@@ -60,7 +64,7 @@ public class DealService {
         }
 
         return new DealsView(
-                match(),
+                match(users.userId()),
                 deals.findByChainAndActiveTrue(Chain.COSTCO).size(),
                 state.getLastSuccessAt(),
                 state.getLastError());
@@ -146,7 +150,7 @@ public class DealService {
      */
     @Transactional(readOnly = true)
     public List<BrowsedDeal> browse(String query, boolean warehouseOnly) {
-        Set<String> logged = new HashSet<>(observations.findItemNumbersForChain(Chain.COSTCO));
+        Set<String> logged = new HashSet<>(observations.findItemNumbersForChain(users.userId(), Chain.COSTCO));
         String needle = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
 
         return deals.findByChainAndActiveTrue(Chain.COSTCO).stream()
@@ -180,9 +184,9 @@ public class DealService {
         return 0;
     }
 
-    /** Joins active promotions to logged items on the retailer's item number. */
-    private List<DealMatch> match() {
-        List<String> itemNumbers = observations.findItemNumbersForChain(Chain.COSTCO);
+    /** Joins active promotions to the current user's logged items on the retailer's item number. */
+    private List<DealMatch> match(Long userId) {
+        List<String> itemNumbers = observations.findItemNumbersForChain(userId, Chain.COSTCO);
         if (itemNumbers.isEmpty()) {
             return List.of();
         }
@@ -198,7 +202,7 @@ public class DealService {
         // The newest sighting of each item number is the price to compare against.
         Map<String, PriceObservation> latest = new HashMap<>();
         for (PriceObservation o : observations.findRecent(
-                org.springframework.data.domain.PageRequest.of(0, 500))) {
+                userId, org.springframework.data.domain.PageRequest.of(0, 500))) {
             if (o.getItemNumber() != null) {
                 latest.putIfAbsent(o.getItemNumber(), o);
             }
@@ -211,7 +215,7 @@ public class DealService {
                 continue;
             }
             for (DealSighting deal : entry.getValue()) {
-                matches.add(toMatch(deal, observation));
+                matches.add(toMatch(userId, deal, observation));
             }
         }
 
@@ -224,9 +228,9 @@ public class DealService {
         return matches;
     }
 
-    private DealMatch toMatch(DealSighting deal, PriceObservation observation) {
+    private DealMatch toMatch(Long userId, DealSighting deal, PriceObservation observation) {
         Long productId = observation.getProduct().getId();
-        Integer regular = regularPriceCents(productId);
+        Integer regular = regularPriceCents(userId, productId);
 
         // Costco's own figures are the truth when it prints them. It usually
         // prints only one of price and saving, and the other is only as good as
@@ -263,8 +267,8 @@ public class DealService {
      * The price without any promotion: the regular price a sale tag printed
      * beside its own, or the newest sighting that was not on sale at all.
      */
-    private Integer regularPriceCents(Long productId) {
-        for (PriceObservation o : observations.findByProductIdOrderByObservedOnDescIdDesc(productId)) {
+    private Integer regularPriceCents(Long userId, Long productId) {
+        for (PriceObservation o : observations.findByUserIdAndProductIdOrderByObservedOnDescIdDesc(userId, productId)) {
             if (o.getRegularPriceCents() != null && o.getRegularPriceCents() > o.getPriceCents()) {
                 return o.getRegularPriceCents();
             }

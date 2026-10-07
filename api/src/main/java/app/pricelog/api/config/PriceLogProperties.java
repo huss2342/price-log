@@ -156,5 +156,20 @@ public class PriceLogProperties {
         public void setPublicRead(boolean publicRead) {
             this.publicRead = publicRead;
         }
+
+        /**
+         * Secret for signing JWT bearer tokens. Falls back to an insecure dev
+         * default (with a startup warning) so local development needs no setup;
+         * set JWT_SECRET to a long random value in production.
+         */
+        private String jwtSecret = "price-log-dev-secret-change-me";
+
+        public String getJwtSecret() {
+            return jwtSecret;
+        }
+
+        public void setJwtSecret(String jwtSecret) {
+            this.jwtSecret = jwtSecret;
+        }
     }
 }

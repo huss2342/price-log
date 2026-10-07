@@ -10,6 +10,7 @@ import app.pricelog.api.domain.Product;
 import app.pricelog.api.domain.SaleSignal;
 import app.pricelog.api.repo.PriceObservationRepository;
 import app.pricelog.api.repo.ProductRepository;
+import app.pricelog.api.security.UserRepository;
 import app.pricelog.api.web.ObservationUpdate;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,6 +39,16 @@ class ObservationUpdateTest {
 
     @Autowired
     ObjectMapper mapper;
+
+    @Autowired
+    UserRepository users;
+
+    private Long ownerId;
+
+    @org.junit.jupiter.api.BeforeEach
+    void resolveOwner() {
+        ownerId = users.findFirstByOrderByIdAsc().orElseThrow().getId();
+    }
 
     @Test
     void correctingTheBrandKeepsTheProductInItsComparison() {
@@ -116,8 +127,9 @@ class ObservationUpdateTest {
         product = products.save(product);
 
         PriceObservation observation = new PriceObservation();
+        observation.setUserId(ownerId);
         observation.setProduct(product);
-        observation.setStore(stores.forChain(Chain.COSTCO));
+        observation.setStore(stores.forChain(ownerId, Chain.COSTCO));
         observation.setObservedOn(LocalDate.now());
         observation.setPriceCents(priceCents);
         observation.setRegularPriceCents(regularCents);

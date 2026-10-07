@@ -4,6 +4,8 @@ import app.pricelog.api.domain.Category;
 import app.pricelog.api.domain.Chain;
 import app.pricelog.api.domain.QualityAttribute;
 import app.pricelog.api.domain.SaleSignal;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,12 +28,12 @@ public record ObservationUpdate(
         String commodity,
         Category category,
         Set<QualityAttribute> attributes,
-        BigDecimal sizeValue,
+        @Positive(message = "must be greater than 0") BigDecimal sizeValue,
         String sizeUnit,
-        Integer packCount,
+        @Positive(message = "must be greater than 0") Integer packCount,
         Chain chain,
         Long storeId,
-        LocalDate observedOn,
+        @PastOrPresent(message = "must not be in the future") LocalDate observedOn,
         @PositiveOrZero Integer priceCents,
         @PositiveOrZero Integer regularPriceCents,
         Boolean onSale,

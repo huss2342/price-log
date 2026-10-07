@@ -2,6 +2,7 @@ package app.pricelog.api.domain;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "store")
@@ -10,6 +11,10 @@ public class Store {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** Whose store this is. Stores are per-user since the accounts migration. */
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
@@ -28,10 +33,15 @@ public class Store {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
     protected Store() {
     }
 
-    public Store(Chain chain, String label, String city, String state) {
+    public Store(Long userId, Chain chain, String label, String city, String state) {
+        this.userId = userId;
         this.chain = chain;
         this.label = label;
         this.city = city;
@@ -40,6 +50,14 @@ public class Store {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public Chain getChain() {
@@ -76,5 +94,9 @@ public class Store {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }

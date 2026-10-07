@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 /** One price tag, seen at one store, on one day. */
@@ -16,6 +17,10 @@ public class PriceObservation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** Whose log entry this is. Every read is scoped through this column. */
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
@@ -106,8 +111,20 @@ public class PriceObservation {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
     public Long getId() {
         return id;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public Product getProduct() {
@@ -292,5 +309,9 @@ public class PriceObservation {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }

@@ -2,11 +2,16 @@ package app.pricelog.api.alerts;
 
 import app.pricelog.api.domain.PriceObservation;
 import app.pricelog.api.domain.Product;
+import app.pricelog.api.domain.UserProductWatch;
 import app.pricelog.api.repo.PriceObservationRepository;
 import app.pricelog.api.repo.ProductRepository;
+import app.pricelog.api.repo.UserProductWatchRepository;
+import app.pricelog.api.security.UserContext;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,32 +21,44 @@ public class AlertService {
 
     private final ProductRepository products;
     private final PriceObservationRepository observations;
+    private final UserProductWatchRepository watches;
     private final SaleCycleService cycles;
+    private final UserContext users;
 
     public AlertService(ProductRepository products,
                         PriceObservationRepository observations,
-                        SaleCycleService cycles) {
+                        UserProductWatchRepository watches,
+                        SaleCycleService cycles,
+                        UserContext users) {
         this.products = products;
         this.observations = observations;
+        this.watches = watches;
         this.cycles = cycles;
+        this.users = users;
     }
 
     @Transactional(readOnly = true)
     public List<WatchedItem> watchlist() {
+        Long userId = users.userId();
+
         // Newest first, so the first sighting of each product is the current one.
         Map<Long, PriceObservation> latest = new LinkedHashMap<>();
-        for (PriceObservation o : observations.findWatched()) {
+        for (PriceObservation o : observations.findWatched(userId)) {
             latest.putIfAbsent(o.getProduct().getId(), o);
         }
+
+        Map<Long, UserProductWatch> watchByProduct = watches.findByUserId(userId).stream()
+                .collect(Collectors.toMap(UserProductWatch::getProductId, Function.identity()));
 
         List<WatchedItem> items = new ArrayList<>();
         for (var entry : latest.entrySet()) {
             PriceObservation o = entry.getValue();
             Product p = o.getProduct();
 
-            SaleCycle cycle = cycles.forProduct(p.getId());
-            Integer best = observations.findLowestPriceCents(p.getId());
-            Integer target = p.getTargetPriceCents();
+            SaleCycle cycle = cycles.forProduct(userId, p.getId());
+            Integer best = observations.findLowestPriceCents(userId, p.getId());
+            Integer target = watchByProduct.get(p.getId()) == null
+                    ? null : watchByProduct.get(p.getId()).getTargetPriceCents();
 
             items.add(new WatchedItem(
                     p.getId(),
@@ -66,22 +83,31 @@ public class AlertService {
         return items;
     }
 
+    /** The outcome of a watch change, for the response body. */
+    public record WatchResult(Long productId, boolean watched, Integer targetPriceCents) {
+    }
+
     @Transactional
-    public Product setWatched(Long productId, Boolean watched, Integer targetPriceCents,
-                              boolean clearTarget) {
-        Product product = products.findById(productId)
+    public WatchResult setWatched(Long productId, Boolean watched, Integer targetPriceCents,
+                                  boolean clearTarget) {
+        Long userId = users.userId();
+        products.findById(productId)
                 .orElseThrow(() -> new NoSuchElementException("No product " + productId));
 
+        UserProductWatch watch = watches.findByUserIdAndProductId(userId, productId)
+                .orElseGet(() -> new UserProductWatch(userId, productId));
+
         if (watched != null) {
-            product.setWatched(watched);
+            watch.setWatched(watched);
         }
         if (clearTarget) {
-            product.setTargetPriceCents(null);
+            watch.setTargetPriceCents(null);
         } else if (targetPriceCents != null) {
-            product.setTargetPriceCents(targetPriceCents);
+            watch.setTargetPriceCents(targetPriceCents);
             // Setting a target implies wanting to hear about it.
-            product.setWatched(true);
+            watch.setWatched(true);
         }
-        return products.save(product);
+        watch = watches.save(watch);
+        return new WatchResult(productId, watch.isWatched(), watch.getTargetPriceCents());
     }
 }

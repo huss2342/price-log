@@ -5,9 +5,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -92,5 +95,85 @@ class ApiKeyFilterTest {
     @Test
     void healthStaysOpenSoProbesWork() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+    }
+
+    /**
+     * A forged token must not fall through to the API-key check or the
+     * anonymous public reads: it is rejected where it stands.
+     */
+    @Test
+    void aBadBearerTokenIsRejectedOutright() throws Exception {
+        mvc.perform(get("/api/stores").header("Authorization", "Bearer not-a-real-token"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /** The legacy key still works, and acts as the owner. */
+    @Test
+    void theKeyActsAsTheOwner() throws Exception {
+        mvc.perform(get("/api/auth/me").header("X-API-Key", KEY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("owner@local"));
+    }
+
+    /**
+     * A Bearer token stands on its own: with the key configured, a signed-in
+     * user writes without also presenting the legacy key.
+     */
+    @Test
+    void aBearerTokenNeedsNoApiKey() throws Exception {
+        String token = register("filter-" + UUID.randomUUID() + "@example.com");
+
+        mvc.perform(post("/api/stores")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"chain\":\"COSTCO\",\"label\":\"Token Costco\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void anonymousMeIsUnauthorized() throws Exception {
+        mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
+    }
+
+    /** Register and login are the front door: they cannot ask for the key. */
+    @Test
+    void registerAndLoginNeedNoKey() throws Exception {
+        String email = "filter-" + UUID.randomUUID() + "@example.com";
+        String token = register(email);
+
+        mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty());
+
+        // The new token authenticates where the key used to be the only way in.
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(email));
+    }
+
+    @Test
+    void aWrongPasswordIsUnauthorized() throws Exception {        String email = "filter-" + UUID.randomUUID() + "@example.com";
+        register(email);
+
+        mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"wrong\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private String register(String email) throws Exception {
+        String body = "{\"email\":\"" + email + "\",\"password\":\"password123\","
+                + "\"displayName\":\"Filter\"}";
+        var result = mvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value(email))
+                .andReturn();
+        String response = result.getResponse().getContentAsString();
+        int start = response.indexOf("\"token\":\"") + 9;
+        return response.substring(start, response.indexOf('"', start));
     }
 }

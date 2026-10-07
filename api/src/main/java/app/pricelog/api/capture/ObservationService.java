@@ -2,6 +2,7 @@ package app.pricelog.api.capture;
 
 import app.pricelog.api.domain.PriceObservation;
 import app.pricelog.api.domain.Product;
+import app.pricelog.api.domain.UserProductWatch;
 import app.pricelog.api.extract.ExtractedTag;
 import app.pricelog.api.extract.ProductResolver;
 import app.pricelog.api.extract.TagRuleEngine;
@@ -9,13 +10,22 @@ import app.pricelog.api.extract.TagVerdict;
 import app.pricelog.api.repo.PriceObservationRepository;
 import app.pricelog.api.repo.ProductRepository;
 import app.pricelog.api.repo.StoreRepository;
+import app.pricelog.api.repo.UserProductWatchRepository;
+import app.pricelog.api.security.UserContext;
 import app.pricelog.api.storage.PhotoStore;
 import app.pricelog.api.web.ObservationUpdate;
+import app.pricelog.api.web.ObservationView;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -35,6 +45,8 @@ public class ObservationService {
     private final ProductResolver productResolver;
     private final TagRuleEngine ruleEngine;
     private final PhotoStore photos;
+    private final UserProductWatchRepository watches;
+    private final UserContext users;
     private final ObjectMapper mapper;
 
     public ObservationService(PriceObservationRepository observations,
@@ -44,6 +56,8 @@ public class ObservationService {
                               ProductResolver productResolver,
                               TagRuleEngine ruleEngine,
                               PhotoStore photos,
+                              UserProductWatchRepository watches,
+                              UserContext users,
                               ObjectMapper mapper) {
         this.observations = observations;
         this.products = products;
@@ -52,34 +66,76 @@ public class ObservationService {
         this.productResolver = productResolver;
         this.ruleEngine = ruleEngine;
         this.photos = photos;
+        this.watches = watches;
+        this.users = users;
         this.mapper = mapper;
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<PriceObservation> pendingReview() {
-        return observations.findPendingReview();
+    public List<PriceObservation> pendingReview() {
+        return observations.findPendingReview(users.userId());
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<PriceObservation> recent(int limit) {
-        return observations.findRecent(PageRequest.of(0, limit));
+    public List<PriceObservation> recent(int limit) {
+        return observations.findRecent(users.userId(), PageRequest.of(0, limit));
     }
 
     /** The whole log, newest first. One person's shopping stays small enough to send at once. */
     @Transactional(readOnly = true)
-    public java.util.List<PriceObservation> all() {
-        return observations.findAllNewestFirst();
+    public List<PriceObservation> all() {
+        return observations.findAllNewestFirst(users.userId());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PriceObservation> page(Pageable pageable) {
+        return observations.pageByUserId(users.userId(), pageable);
     }
 
     @Transactional(readOnly = true)
     public PriceObservation get(Long id) {
-        return observations.findById(id)
+        return observations.findByIdAndUserId(id, users.userId())
                 .orElseThrow(() -> new NoSuchElementException("No observation " + id));
+    }
+
+    /**
+     * Flattens rows for the UI, resolving each product's watch state for the
+     * current user in one query rather than one per row.
+     */
+    @Transactional(readOnly = true)
+    public List<ObservationView> views(List<PriceObservation> rows) {
+        Long userId = users.userId();
+        Map<Long, UserProductWatch> byProduct = watches
+                .findByUserIdAndProductIdIn(userId, productIds(rows)).stream()
+                .collect(Collectors.toMap(UserProductWatch::getProductId, Function.identity()));
+        return rows.stream()
+                .map(o -> ObservationView.of(o, watchState(byProduct.get(o.getProduct().getId()))))
+                .toList();
+    }
+
+    private List<Long> productIds(List<PriceObservation> rows) {
+        return rows.stream().map(o -> o.getProduct().getId()).distinct().toList();
+    }
+
+    private ObservationView.WatchState watchState(UserProductWatch watch) {
+        return watch == null
+                ? ObservationView.WatchState.NONE
+                : new ObservationView.WatchState(watch.isWatched(), watch.getTargetPriceCents());
+    }
+
+    /** The current user's watch state for specific products. */
+    @Transactional(readOnly = true)
+    public Map<Long, UserProductWatch> watchesFor(Collection<Long> productIds) {
+        Long userId = users.userId();
+        return watches.findByUserIdAndProductIdIn(userId, productIds).stream()
+                .collect(Collectors.toMap(UserProductWatch::getProductId, Function.identity()));
     }
 
     @Transactional
     public PriceObservation update(Long id, ObservationUpdate update) {
-        PriceObservation observation = get(id);
+        Long userId = users.userId();
+        PriceObservation observation = observations.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new NoSuchElementException("No observation " + id));
         Product product = observation.getProduct();
         boolean productChanged = false;
 
@@ -124,9 +180,9 @@ public class ObservationService {
         }
 
         if (update.chain() != null) {
-            observation.setStore(storeResolver.forChain(update.chain()));
+            observation.setStore(storeResolver.forChain(userId, update.chain()));
         } else if (update.storeId() != null) {
-            observation.setStore(stores.findById(update.storeId())
+            observation.setStore(stores.findByIdAndUserId(update.storeId(), userId)
                     .orElseThrow(() -> new NoSuchElementException("No store " + update.storeId())));
         }
         if (update.observedOn() != null) {
@@ -172,7 +228,7 @@ public class ObservationService {
         // A corrected price can change its ending, and with it the whole reading
         // of the tag. Only re-derive when the user did not state a signal.
         if (update.saleSignal() == null) {
-            reapplyTagRules(observation, update.onSale() == null, update.discontinued() == null);
+            reapplyTagRules(userId, observation, update.onSale() == null, update.discontinued() == null);
         }
 
         return observations.save(observation);
@@ -187,7 +243,7 @@ public class ObservationService {
      * @param refreshDiscontinued false when the user said whether it is being
      *                            restocked, for the same reason
      */
-    private void reapplyTagRules(PriceObservation observation, boolean refreshOnSale,
+    private void reapplyTagRules(Long userId, PriceObservation observation, boolean refreshOnSale,
                                  boolean refreshDiscontinued) {
         ExtractedTag tag = parseExtraction(observation.getRawExtraction());
         List<String> markers = tag == null ? List.of() : tag.markersOrEmpty();
@@ -197,7 +253,7 @@ public class ObservationService {
         boolean showsSaving = regular != null && regular > observation.getPriceCents()
                 || (!refreshOnSale && observation.isOnSale());
 
-        TagVerdict verdict = ruleEngine.evaluate(observation.getStore().getChain(),
+        TagVerdict verdict = ruleEngine.evaluate(userId, observation.getStore().getChain(),
                 observation.getPriceCents(), markers, rawText, showsSaving);
 
         observation.setSaleSignal(verdict.signal());
@@ -231,7 +287,7 @@ public class ObservationService {
      */
     @Transactional
     public void delete(Long id) {
-        PriceObservation observation = observations.findById(id)
+        PriceObservation observation = observations.findByIdAndUserId(id, users.userId())
                 .orElseThrow(() -> new NoSuchElementException("No observation " + id));
         String photoKey = observation.getPhotoUrl();
         observations.delete(observation);

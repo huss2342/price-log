@@ -14,6 +14,10 @@ public class TagRule {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Whose convention this is. New accounts start with a copy of the owner's. */
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private Chain chain;
@@ -42,11 +46,19 @@ public class TagRule {
     @Column(nullable = false)
     private boolean enabled = true;
 
-    protected TagRule() {
+    public TagRule() {
     }
 
     public Long getId() {
         return id;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public Chain getChain() {

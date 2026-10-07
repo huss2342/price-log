@@ -60,7 +60,16 @@ public record ObservationView(
         boolean lowestEver,
         boolean meetsTarget) {
 
-    public static ObservationView of(PriceObservation o) {
+    /**
+     * This user's watch state for the product: whether they watch it and the
+     * target price they set. Watch data lives per user, so it is resolved in
+     * the service layer and passed in rather than read off the shared product.
+     */
+    public record WatchState(boolean watched, Integer targetPriceCents) {
+        public static final WatchState NONE = new WatchState(false, null);
+    }
+
+    public static ObservationView of(PriceObservation o, WatchState watch) {
         Product p = o.getProduct();
         Store s = o.getStore();
 
@@ -76,7 +85,7 @@ public record ObservationView(
         Integer lowestBefore = o.getLowestBeforeCents();
         boolean lowestEver = lowestBefore != null && o.getPriceCents() < lowestBefore;
 
-        Integer target = p.getTargetPriceCents();
+        Integer target = watch.targetPriceCents();
         boolean meetsTarget = target != null && o.getPriceCents() <= target;
 
         return new ObservationView(
@@ -88,7 +97,7 @@ public record ObservationView(
                 o.getSaleSignal(), o.getSaleEndsOn(), o.isDiscontinued(), o.getUnitPriceCents(),
                 o.getItemNumber(), o.getPhotoUrl(), o.getConfidence(), o.isNeedsReview(),
                 o.getNotes(), o.getTagInsights(), o.getAdvice(),
-                p.isWatched(), target, previous, o.getPreviousObservedOn(),
+                watch.watched(), target, previous, o.getPreviousObservedOn(),
                 change, changePercent, lowestBefore, lowestEver, meetsTarget);
     }
 }

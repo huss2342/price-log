@@ -2,9 +2,12 @@ package app.pricelog.api.config;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,5 +50,27 @@ class ApiKeyFilterClosedTest {
     @Test
     void healthStaysOpenSoProbesWork() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+    }
+
+    /**
+     * Register and login are the front door even when everything else is shut:
+     * a new account cannot present a key it does not have yet.
+     */
+    @Test
+    void registerAndLoginAreOpenWithoutTheKey() throws Exception {
+        String email = "closed-" + UUID.randomUUID() + "@example.com";
+        String body = "{\"email\":\"" + email + "\",\"password\":\"password123\"}";
+
+        mvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.token").isNotEmpty());
+
+        mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(email));
     }
 }

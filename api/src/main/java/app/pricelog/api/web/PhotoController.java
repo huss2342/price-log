@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.HandlerMapping;
 import jakarta.servlet.http.HttpServletRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Duration;
 
 /**
@@ -18,6 +20,7 @@ import java.time.Duration;
  */
 @RestController
 @RequestMapping("/api/photos")
+@Tag(name = "photos", description = "Tag photos from private storage")
 public class PhotoController {
 
     private final PhotoStore photos;
@@ -26,6 +29,7 @@ public class PhotoController {
         this.photos = photos;
     }
 
+    @Operation(summary = "One tag photo's bytes")
     @GetMapping("/**")
     public ResponseEntity<byte[]> get(HttpServletRequest request) {
         String path = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);

@@ -167,23 +167,38 @@ the single biggest lever on the bill.
 
 ## API
 
+Authenticate with `Authorization: Bearer <token>` (from `/api/auth/*`) or the
+legacy `X-API-Key` header, which acts as the owner. Everything is per-user:
+each account sees only its own stores, log, tag rules and watchlist.
+
 | Method | Path | Purpose |
 |---|---|---|
+| `POST` | `/api/auth/register` | Create an account; returns the profile and a token |
+| `POST` | `/api/auth/login` | Sign in; returns the profile and a token |
+| `GET` | `/api/auth/me` | The signed-in account |
+| `PUT` | `/api/auth/password` | Change the password (needs the current one) |
+| `DELETE` | `/api/auth/account` | Delete the account, its rows and its photos |
 | `POST` | `/api/captures?chain=` | Upload a tag photo; returns the saved, interpreted observation |
-| `GET` | `/api/observations` | The whole log, newest first; what the app keeps on the device |
+| `GET` | `/api/observations` | The whole log, newest first; `?page=&size=` pages it |
 | `GET` | `/api/observations/pending` | Readings flagged for a second look |
-| `PUT` | `/api/observations/{id}` | Correct a reading; re-derives unit price, grouping and tag meaning |
-| `DELETE` | `/api/observations/{id}` | Remove a reading, and the photo it came from |
+| `GET`/`PUT`/`DELETE` | `/api/observations/{id}` | One reading; correct it or remove it and its photo |
 | `GET` | `/api/deals` | Costco's current savings on items in the log, before and after |
+| `POST` | `/api/deals/refresh` | Re-read Costco's page now |
 | `GET` | `/api/search?q=` | Comparison groups matching a search |
 | `GET` | `/api/categories/{category}` | Comparison groups in a category |
 | `GET` | `/api/groups/{comparisonKey}` | One comparison group in full |
 | `GET` | `/api/products/{id}/history` | Every price logged for one product |
-| `GET` | `/api/stores` | The chains prices have been logged at |
-| `GET`/`PUT` | `/api/tag-rules` | Store tag conventions |
+| `GET` | `/api/watchlist` | Tracked items and what looks overdue |
+| `PUT` | `/api/products/{id}/watch` | Watch a product or set its target price |
+| `GET`/`POST` | `/api/stores` | The user's stores; add one |
+| `PUT`/`DELETE` | `/api/stores/{id}` | Rename a store; delete one with no logged prices |
+| `GET`/`POST` | `/api/tag-rules` | Tag conventions; add one |
+| `PUT`/`DELETE` | `/api/tag-rules/{id}` | Edit or delete a tag rule |
+| `GET` | `/api/export` | The account's data as a JSON download |
 
-Everything except `/actuator/health` requires an `X-API-Key` header when
-`APP_API_KEY` is set.
+Full interactive docs live at `/swagger-ui.html` when the API is running.
+Everything except `/actuator/health` requires credentials when `APP_API_KEY`
+is set; `/api/auth/register` and `/api/auth/login` never do.
 
 ## Notes on accuracy
 

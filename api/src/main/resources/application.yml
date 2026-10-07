@@ -45,6 +45,9 @@ pricelog:
   auth:
     # Empty disables the check entirely, which is the local development default.
     api-key: ${APP_API_KEY:}
+    # Secret for signing JWT bearer tokens. The dev default is insecure on
+    # purpose and triggers a startup warning; set JWT_SECRET in production.
+    jwt-secret: ${JWT_SECRET:price-log-dev-secret-change-me}
     # Off by default; the front end's demo data is what gets shown to people.
     public-read: ${PUBLIC_READ:false}
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}

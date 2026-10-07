@@ -47,8 +47,30 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, e.getMessage());
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class})
-    public ResponseEntity<Map<String, String>> badRequest(Exception e) {
+    /** Authenticated, but this action is not theirs to take. */
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, String>> forbidden(ForbiddenException e) {
+        return error(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
+    /**
+     * Validation failed on the request's content: blank where text was
+     * required, an unknown enum value, a weak password. 422 so callers can
+     * tell "fix what you sent" apart from a malformed request (400).
+     */
+    @ExceptionHandler({UnprocessableException.class, MethodArgumentNotValidException.class})
+    public ResponseEntity<Map<String, String>> unprocessable(Exception e) {
+        String message = e instanceof MethodArgumentNotValidException notValid
+                ? notValid.getBindingResult().getFieldErrors().stream()
+                        .map(f -> f.getField() + " " + f.getDefaultMessage())
+                        .sorted()
+                        .collect(java.util.stream.Collectors.joining("; "))
+                : e.getMessage();
+        return error(HttpStatus.UNPROCESSABLE_ENTITY, message);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> badRequest(IllegalArgumentException e) {
         return error(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
