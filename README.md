@@ -6,6 +6,10 @@ and where it was cheapest.
 
 Built for warehouse-club shopping: Costco first, then Sam's Club, Aldi, Walmart.
 
+<p align="center"><img src="docs/demo.gif" alt="Price Log demo: browsing items and comparing unit prices" width="640"></p>
+
+**[Try the demo](https://salmon-sand-05b9e270f.7.azurestaticapps.net)** (sample data, no sign-in).
+
 ## What it does that a spreadsheet does not
 
 **Reads the tag, not just the price.** A photo goes to an Azure OpenAI vision
